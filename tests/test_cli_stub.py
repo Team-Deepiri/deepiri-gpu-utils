@@ -19,6 +19,7 @@ class TestCliStub(unittest.TestCase):
         parser.parse_args(["doctor", "--json"])
         parser.parse_args(["setup", "--device", "auto", "--dry-run"])
         parser.parse_args(["build-args", "--json"])
+        parser.parse_args(["build-args", "--device-type", "cpu", "--json"])
         parser.parse_args(["validate", "--json"])
 
         # nested subcommand

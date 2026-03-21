@@ -63,6 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_setup.add_argument("--yes", action="store_true", help="Skip confirmations (where applicable)")
 
     p_build_args = subparsers.add_parser("build-args", help="Emit docker build args for detection")
+    p_build_args.add_argument(
+        "--device-type",
+        default="auto",
+        choices=["auto", "gpu", "cpu", "mpsos"],
+        help="Override detection (default: auto from detect)",
+    )
     p_build_args.add_argument("--json", action="store_true", help="Emit JSON")
 
     p_validate = subparsers.add_parser("validate", help="Aggregate validate checks (skeleton)")
@@ -120,11 +126,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "build-args":
-        out = build_args_from_detection(device_type="auto")
+        out = build_args_from_detection(device_type=args.device_type)
         if args.json:
             print(json.dumps(_to_jsonable(out), indent=2, sort_keys=True))
         else:
-            print(f"DEVICE_TYPE={out.device_type}")
+            for key, val in out.build_args.items():
+                print(f"{key}={val}")
+            if out.warnings:
+                for w in out.warnings:
+                    print(f"Warning: {w}")
         return 0
 
     if args.cmd == "validate":
@@ -134,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
-            print("Validation complete (stub).")
+            print("Validation complete.")
         return 0
 
     if args.cmd == "ollama":
