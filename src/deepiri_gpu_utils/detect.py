@@ -9,6 +9,8 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from . import system_info
+
 Backend = Literal["cuda", "rocm", "mps", "cpu", "unknown"]
 
 _MIN_GPU_MEMORY_GB = 4
@@ -141,10 +143,17 @@ def detect(*, prefer: str | Backend | None = None) -> DetectResult:
     nv = query_nvidia_smi()
     if nv is not None:
         warnings.extend(_prefer_mismatch_warnings(pref, "cuda"))
+        wsl = system_info.is_wsl()
+        if wsl:
+            warnings.append(
+                "WSL2 detected: use Windows NVIDIA drivers + updated WSL; "
+                "if Docker GPU fails, install nvidia-container-toolkit inside Linux."
+            )
         details: dict[str, Any] = {
             "nvidia": nv,
             "min_gpu_memory_gb": _MIN_GPU_MEMORY_GB,
             "platform": platform.system(),
+            "wsl": wsl,
         }
         return DetectResult(
             backend="cuda",
@@ -153,13 +162,42 @@ def detect(*, prefer: str | Backend | None = None) -> DetectResult:
             warnings=warnings,
         )
 
+    if platform.system() == "Linux":
+        lspci_nv = system_info.lspci_nvidia_present()
+        if lspci_nv is True:
+            warnings.extend(_prefer_mismatch_warnings(pref, "cuda"))
+            warnings.append(
+                "NVIDIA GPU visible on PCI but nvidia-smi failed; install drivers. "
+                "On WSL2, install/update GPU drivers on Windows and `wsl --update`."
+            )
+            wsl = system_info.is_wsl()
+            if wsl:
+                warnings.append(
+                    "WSL2 GPU: https://learn.microsoft.com/en-us/windows/wsl/tutorials/gpu-compute"
+                )
+            return DetectResult(
+                backend="cuda",
+                confidence=0.48,
+                details={
+                    "platform": "Linux",
+                    "nvidia_drivers_missing": True,
+                    "lspci_nvidia": True,
+                    "wsl": wsl,
+                    "min_gpu_memory_gb": _MIN_GPU_MEMORY_GB,
+                },
+                warnings=warnings,
+            )
+
     rocm = query_rocm_smi()
     if rocm is not None:
         warnings.extend(_prefer_mismatch_warnings(pref, "rocm"))
+        wsl = system_info.is_wsl() if platform.system() == "Linux" else False
+        if wsl:
+            warnings.append("ROCm on WSL is limited; prefer native Linux for AMD GPU dev.")
         return DetectResult(
             backend="rocm",
             confidence=0.78,
-            details={"rocm": rocm, "platform": platform.system()},
+            details={"rocm": rocm, "platform": platform.system(), "wsl": wsl},
             warnings=warnings,
         )
 
@@ -168,14 +206,17 @@ def detect(*, prefer: str | Backend | None = None) -> DetectResult:
         return DetectResult(
             backend="mps",
             confidence=0.88,
-            details={"platform": "Darwin", "machine": platform.machine()},
+            details={"platform": "Darwin", "machine": platform.machine(), "wsl": False},
             warnings=warnings,
         )
 
     warnings.extend(_prefer_mismatch_warnings(pref, "cpu"))
+    wsl = system_info.is_wsl() if platform.system() == "Linux" else False
+    if wsl:
+        warnings.append("WSL2 without working GPU tools in this environment; may be CPU-only.")
     return DetectResult(
         backend="cpu",
         confidence=0.82,
-        details={"platform": platform.system(), "machine": platform.machine()},
+        details={"platform": platform.system(), "machine": platform.machine(), "wsl": wsl},
         warnings=warnings,
     )

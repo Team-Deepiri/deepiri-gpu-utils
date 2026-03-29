@@ -10,12 +10,12 @@ from .detect import detect
 from .doctor import doctor
 from .ollama import recommend_models
 from .setup import DeviceArg, setup_device, setup_device_mac
+from .torch_device import resolve_torch_device
 
 
 def _to_jsonable(obj: Any) -> Any:
     """Convert nested dataclasses/objects into JSON-serializable primitives."""
 
-    # Handle dataclasses (including nested ones) explicitly.
     if is_dataclass(obj):
         return _to_jsonable(asdict(obj))
 
@@ -25,7 +25,6 @@ def _to_jsonable(obj: Any) -> Any:
     if isinstance(obj, (list, tuple)):
         return [_to_jsonable(v) for v in obj]
 
-    # Fall back to object dicts for non-dataclass objects.
     if hasattr(obj, "__dict__"):
         return {str(k): _to_jsonable(v) for k, v in obj.__dict__.items()}
 
@@ -45,10 +44,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_detect.add_argument("--json", action="store_true", help="Emit JSON")
 
-    p_doctor = subparsers.add_parser("doctor", help="Run readiness checks")
+    p_doctor = subparsers.add_parser("doctor", help="Run readiness checks (Docker, DMI hints, WSL)")
     p_doctor.add_argument("--json", action="store_true", help="Emit JSON")
 
-    p_setup = subparsers.add_parser("setup", help="Set up prerequisites for a device")
+    p_setup = subparsers.add_parser("setup", help="Print setup runbook (does not run sudo)")
     p_setup.add_argument(
         "--device",
         default="auto",
@@ -58,9 +57,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_setup.add_argument(
         "--dry-run",
         action="store_true",
-        help="Do not execute privileged commands",
+        help="Mark plan as dry-run (default unless --yes)",
     )
-    p_setup.add_argument("--yes", action="store_true", help="Skip confirmations (where applicable)")
+    p_setup.add_argument(
+        "--yes",
+        action="store_true",
+        help="Mark plan as confirmed (still prints runbook only; no privileged execution)",
+    )
 
     p_build_args = subparsers.add_parser("build-args", help="Emit docker build args for detection")
     p_build_args.add_argument(
@@ -71,14 +74,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_build_args.add_argument("--json", action="store_true", help="Emit JSON")
 
-    p_validate = subparsers.add_parser("validate", help="Aggregate validate checks (skeleton)")
+    p_validate = subparsers.add_parser(
+        "validate",
+        help="Aggregate detect, doctor, build-args, ollama, torch-device",
+    )
     p_validate.add_argument("--json", action="store_true", help="Emit JSON")
 
     p_ollama = subparsers.add_parser("ollama", help="Ollama related helpers")
     ollama_sub = p_ollama.add_subparsers(dest="ollama_cmd", required=True)
-    p_rec = ollama_sub.add_parser("recommend", help="Recommend Ollama model(s)")
-    p_rec.add_argument("--backend-hint", default=None, help="Optional backend hint")
+    p_rec = ollama_sub.add_parser("recommend", help="Recommend Ollama model(s) by hardware tier")
+    p_rec.add_argument("--backend-hint", default=None, help="Optional backend hint (cpu/mps/cuda)")
     p_rec.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_torch = subparsers.add_parser(
+        "torch-device",
+        help="Resolve torch device (optional [torch] extra)",
+    )
+    p_torch.add_argument(
+        "--policy",
+        default="auto",
+        choices=["auto", "cuda", "mps", "cpu", "rocm"],
+        help="Device selection policy",
+    )
+    p_torch.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -111,10 +129,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "setup":
-        # In the skeleton, we just return a runbook.
         device_arg: DeviceArg = args.device  # type: ignore[assignment]
-        # This bootstrap branch never executes privileged commands.
-        dry_run = True
+        dry_run = args.dry_run or not args.yes
 
         if device_arg == "apple":
             plan = setup_device_mac(dry_run=dry_run)
@@ -140,11 +156,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "validate":
         d = detect()
         rep = doctor()
-        payload = {"detect": _to_jsonable(d), "doctor": _to_jsonable(rep)}
+        ba = build_args_from_detection(device_type="auto")
+        ollama_rec = recommend_models()
+        torch_dec = resolve_torch_device("auto")
+        payload = {
+            "detect": _to_jsonable(d),
+            "doctor": _to_jsonable(rep),
+            "build_args": _to_jsonable(ba),
+            "ollama": _to_jsonable(ollama_rec),
+            "torch_device": _to_jsonable(torch_dec),
+        }
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
-            print("Validation complete.")
+            print(f"validate: detect={d.backend} doctor={rep.status} torch={torch_dec.device}")
         return 0
 
     if args.cmd == "ollama":
@@ -152,11 +177,22 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             print(json.dumps(_to_jsonable(rec), indent=2, sort_keys=True))
         else:
-            print(f"Default model: {rec.default_model}")
+            print(f"Default model: {rec.default_model} (setup_tier={rec.setup_tier})")
             if rec.recommended_models:
-                print("Recommended:", ", ".join(rec.recommended_models))
+                print("Recommended:", ", ".join(rec.recommended_models[:8]))
+            if rec.usable_models:
+                print("Usable:", ", ".join(rec.usable_models[:8]))
+        return 0
+
+    if args.cmd == "torch-device":
+        td = resolve_torch_device(args.policy)  # type: ignore[arg-type]
+        if args.json:
+            print(json.dumps(_to_jsonable(td), indent=2, sort_keys=True))
+        else:
+            print(f"torch device: {td.device} (torch_installed={td.torch_available})")
+            for n in td.notes:
+                print(f"  note: {n}")
         return 0
 
     parser.error("Unknown command")
     return 2
-

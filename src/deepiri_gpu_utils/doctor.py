@@ -5,8 +5,15 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from .detect import DetectResult, detect
+from .system_info import (
+    dmidecode_inventory,
+    docker_cli_available,
+    is_wsl,
+    nvidia_container_toolkit_hint,
+    system_ram_gb,
+)
 
-LiteralStatus = Literal["ok", "unknown"]
+LiteralStatus = Literal["ok", "warn", "unknown"]
 
 
 @dataclass(frozen=True)
@@ -18,26 +25,72 @@ class DoctorReport:
 
 
 def doctor() -> DoctorReport:
-    """Run lightweight readiness checks (detection + platform facts).
-
-    Deeper checks (NVIDIA Container Toolkit, ``dmidecode``, etc.) come in Phase 2.
-    """
+    """Run readiness checks: detection, Docker/toolkit hints, DMI (best-effort), WSL notes."""
 
     d = detect()
-    status: LiteralStatus = "ok" if d.backend != "unknown" else "unknown"
-    findings = {
+    findings: dict[str, Any] = {
         "platform": platform.system(),
         "platform_release": platform.release(),
         "machine": platform.machine(),
         "python": platform.python_version(),
+        "wsl": is_wsl(),
+        "system_ram_gb": system_ram_gb(),
+        "docker_cli": docker_cli_available(),
+        "nvidia_container_toolkit": nvidia_container_toolkit_hint(),
+        "dmi": dmidecode_inventory(),
     }
+
     runbook: list[str] = []
+    status: LiteralStatus = "ok" if d.backend != "unknown" else "unknown"
+
     if d.backend == "mps":
         runbook.append(
-            "Apple Silicon: for local Ollama, run `ollama serve` outside Docker; "
-            "see README (ai-team start.sh excludes cyrex/ollama on MPS)."
+            "Apple Silicon: run `ollama serve` natively for local LLM; ai-team start.sh "
+            "excludes cyrex/ollama in Docker on MPS."
         )
+        runbook.append("Docker Desktop: use arm64 images where possible.")
     elif d.backend == "cpu" and platform.system() == "Linux":
-        runbook.append("CPU-only: expect slower inference; GPU optional for development.")
+        runbook.append("CPU-only: inference will be slower; GPU optional for dev.")
+
+    if is_wsl() and d.backend == "cuda":
+        runbook.append(
+            "WSL2 + CUDA: verify `nvidia-smi` in this distro; on host Windows, install "
+            "NVIDIA Game Ready/Studio drivers with WSL support."
+        )
+        status = "warn"
+
+    if d.backend == "cuda" and docker_cli_available():
+        hints = findings["nvidia_container_toolkit"]
+        if (
+            isinstance(hints, dict)
+            and not hints.get("nvidia_ctk_on_path")
+            and not hints.get("nvidia_container_binary")
+        ):
+            runbook.append(
+                "Docker + NVIDIA: install NVIDIA Container Toolkit, then "
+                "`sudo nvidia-ctk runtime configure --runtime=docker --set-as-default` "
+                "and restart Docker (see Nvidia install guide)."
+            )
+            status = "warn"
+
+    if d.details.get("nvidia_drivers_missing"):
+        runbook.append(
+            "PCI shows NVIDIA but drivers are missing: install OS-appropriate NVIDIA "
+            "drivers until `nvidia-smi` works."
+        )
+        status = "warn"
+
+    if d.backend == "rocm":
+        runbook.append(
+            "ROCm: install AMD ROCm stack for your distro; Docker ROCm images differ "
+            "from NVIDIA — see AMD docs."
+        )
+
+    dmi = findings.get("dmi")
+    if isinstance(dmi, dict) and not dmi.get("available"):
+        runbook.append(
+            "DMI/SMBIOS: run `sudo dmidecode -s system-product-name` for inventory "
+            f"({dmi.get('reason', 'unavailable')})."
+        )
 
     return DoctorReport(detect=d, status=status, findings=findings, runbook=runbook)

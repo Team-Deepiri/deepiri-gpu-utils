@@ -18,6 +18,7 @@ class TestDetect(unittest.TestCase):
         self.assertIn("Unknown prefer", r.warnings[0])
 
     @patch.object(det, "query_nvidia_smi", return_value=None)
+    @patch.object(det.system_info, "lspci_nvidia_present", return_value=False)
     @patch.object(det, "query_rocm_smi", return_value=None)
     @patch("deepiri_gpu_utils.detect.platform.system", return_value="Linux")
     @patch("deepiri_gpu_utils.detect.platform.machine", return_value="x86_64")
@@ -25,6 +26,16 @@ class TestDetect(unittest.TestCase):
         r = det.detect()
         self.assertEqual(r.backend, "cpu")
         self.assertGreaterEqual(r.confidence, 0.5)
+
+    @patch.object(det, "query_nvidia_smi", return_value=None)
+    @patch.object(det.system_info, "lspci_nvidia_present", return_value=True)
+    @patch.object(det, "query_rocm_smi", return_value=None)
+    @patch.object(det.system_info, "is_wsl", return_value=False)
+    @patch("deepiri_gpu_utils.detect.platform.system", return_value="Linux")
+    def test_cuda_lspci_when_smi_missing(self, *_m: object) -> None:
+        r = det.detect()
+        self.assertEqual(r.backend, "cuda")
+        self.assertTrue(r.details.get("nvidia_drivers_missing"))
 
     @patch.object(det, "query_nvidia_smi")
     @patch.object(det, "query_rocm_smi", return_value=None)

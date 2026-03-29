@@ -21,6 +21,8 @@ class TestCliStub(unittest.TestCase):
         parser.parse_args(["build-args", "--json"])
         parser.parse_args(["build-args", "--device-type", "cpu", "--json"])
         parser.parse_args(["validate", "--json"])
+        parser.parse_args(["torch-device", "--json"])
+        parser.parse_args(["torch-device", "--policy", "cpu", "--json"])
 
         # nested subcommand
         parser.parse_args(["ollama", "recommend", "--json"])
@@ -36,7 +38,9 @@ class TestCliStub(unittest.TestCase):
         rc2 = main(["validate", "--json"])
         self.assertEqual(rc2, 0)
 
+        rc3 = main(["torch-device", "--policy", "cpu", "--json"])
+        self.assertEqual(rc3, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
-
