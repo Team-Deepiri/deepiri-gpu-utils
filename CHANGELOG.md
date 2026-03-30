@@ -3,10 +3,13 @@
 ## 0.1.0 (Unreleased)
 
 - Initial skeleton for `deepiri-gpu-utils`
-- CLI stub: `detect`, `doctor`, `setup`, `build-args`, `validate`, `ollama recommend`
-- Package module stubs and minimal tests
-- **Phase 1 (partial):** real `detect()` (NVIDIA via `nvidia-smi`, ROCm via `rocm-smi`, MPS on
-  Darwin, CPU fallback) and `build_args_from_detection()` aligned with Cyrex `detect_gpu.sh` /
-  `Dockerfile` (`BASE_IMAGE`, `DEVICE_TYPE`, `BUILD_TYPE=prebuilt`); `doctor` uses live detection;
-  `build-args --device-type`; unit tests with mocks
-
+- CLI: `detect`, `doctor`, `setup`, `build-args`, `validate`, `ollama recommend`, `torch-device`
+- **Phase 1:** `detect()` + `build_args_from_detection()` aligned with Cyrex `detect_gpu.sh` /
+  `Dockerfile`; `build-args --device-type`
+- **Phase 2:** `doctor()` with RAM/Docker/NVIDIA toolkit/DMI (`dmidecode` when root), WSL notes;
+  `setup` / `setup_device` / `setup_device_mac` runbooks (read-only, no privileged execution)
+- **Phase 3:** `ollama.recommend_models` — `setup_tier` + `categorize_model` from
+  `check-ollama-models.sh`; `validate` includes ollama summary
+- **Phase 4:** `resolve_torch_device()` with optional `[torch]` extra
+- **Phase 5:** Linux **lspci** NVIDIA path when `nvidia-smi` missing; WSL/ROCm warnings in `detect`
+- **Phase 6:** `examples/` compose fragment + README; top-level README matrix
