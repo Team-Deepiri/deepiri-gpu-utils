@@ -76,7 +76,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_build_args.add_argument(
         "--base-image-only",
         action="store_true",
-        help="Print only BASE_IMAGE (one line) for shells: BASE_IMAGE=$(deepiri-gpu build-args --base-image-only)",
+        help=(
+            "Print only BASE_IMAGE (one line) for shells: "
+            "BASE_IMAGE=$(deepiri-gpu build-args --base-image-only)"
+        ),
     )
 
     p_validate = subparsers.add_parser(
