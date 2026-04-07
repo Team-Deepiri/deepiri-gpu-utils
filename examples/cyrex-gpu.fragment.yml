@@ -1,0 +1,15 @@
+# Fragment: pass GPU-oriented build args into a Cyrex (or similar) image build.
+# Merge into your compose file or use as documentation — paths are illustrative.
+#
+#   BASE_IMAGE=$(deepiri-gpu build-args | awk -F= '/^BASE_IMAGE=/ {print $2; exit}')
+#   DEVICE_TYPE=$(deepiri-gpu build-args | awk -F= '/^DEVICE_TYPE=/ {print $2; exit}')
+
+services:
+  cyrex:
+    build:
+      context: ..
+      dockerfile: diri-cyrex/Dockerfile
+      args:
+        BUILD_TYPE: prebuilt
+        BASE_IMAGE: pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime
+        DEVICE_TYPE: gpu
