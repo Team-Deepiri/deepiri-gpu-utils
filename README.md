@@ -31,14 +31,3 @@ deepiri-gpu build-args --device-type gpu
 deepiri-gpu validate --json
 deepiri-gpu ollama recommend --json
 deepiri-gpu torch-device --policy auto --json
-```
-
-## Examples
-
-See **`examples/README.md`** and **`examples/cyrex-gpu.fragment.yml`**.
-
-## Source parity (deepiri-platform)
-
-- `diri-cyrex/scripts/utils/detect_gpu.sh`, `Dockerfile`, `scripts/llm/check-ollama-models.sh`
-- `team_dev_environments/ai-team/start.sh`
-- `scripts/docs/README-GPU-SETUP.md` (Ollama + Container Toolkit)
