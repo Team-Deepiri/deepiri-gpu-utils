@@ -1,0 +1,13 @@
+# Exclude generated/build/runtime artifact paths.
+paths-ignore:
+  - '**/__pycache__/**'
+  - '**/.pytest_cache/**'
+  - '**/.mypy_cache/**'
+  - '**/.ruff_cache/**'
+  - '**/.venv/**'
+  - '**/venv/**'
+  - '**/dist/**'
+  - '**/build/**'
+  - '**/coverage/**'
+  - '**/htmlcov/**'
+  - '**/*.pyc'
