@@ -1,6 +1,6 @@
-# Examples
+# Scripts
 
-Runnable helpers that compose `deepiri-gpu-utils` for compose builds, CI, and
+Helper scripts that compose `deepiri-gpu-utils` for compose builds, CI, and
 local preflight. All are read-only — they never mutate GPU state or the
 environment.
 
@@ -16,11 +16,11 @@ docker compose -f docker-compose.dev.yml build cyrex
 Or use the dedicated export command / shell helpers:
 
 ```bash
-source examples/export-build-env.sh
+source scripts/export-build-env.sh
 echo "$BASE_IMAGE" "$DEVICE_TYPE"
 
 # optional prefix for multi-service compose
-PREFIX=CYREX_ source examples/export-build-env.sh
+PREFIX=CYREX_ source scripts/export-build-env.sh
 ```
 
 Or pass explicitly:
@@ -38,8 +38,8 @@ See `cyrex-gpu.fragment.yml` and `compose-env.fragment.sh` for minimal patterns.
 ## CI / compose preflight
 
 ```bash
-examples/ci-preflight.sh
-examples/ci-preflight.sh --strict   # fail when detect≠cpu but inventory is empty
+scripts/ci-preflight.sh
+scripts/ci-preflight.sh --strict   # fail when detect≠cpu but inventory is empty
 ```
 
 ## GPU install guides (all backends)
@@ -50,22 +50,22 @@ profile with install steps, verify commands, and compose/docker hints:
 ```bash
 deepiri-gpu profile --all --json
 deepiri-gpu install-check --all --json
-examples/gpu-install-guide.sh
-examples/gpu-install-guide.sh amd
+scripts/gpu-install-guide.sh
+scripts/gpu-install-guide.sh amd
 ```
 
 ## Library API scripts
 
 ```bash
-python examples/hardware-summary.py
-python examples/hardware-summary.py --full
-python examples/check-model-fit.py mistral:7b --json
-examples/generate-gpu-report.sh
+python scripts/hardware-summary.py
+python scripts/hardware-summary.py --full
+python scripts/check-model-fit.py mistral:7b --json
+scripts/generate-gpu-report.sh
 deepiri-gpu visualize
 deepiri-gpu model-matrix
-examples/run-stress-test.sh probes 2
-examples/ci-health-gate.sh
-examples/save-snapshot.sh baseline.json
+scripts/run-stress-test.sh probes 2
+scripts/ci-health-gate.sh
+scripts/save-snapshot.sh baseline.json
 ```
 
 ## Ollama on Linux / WSL (NVIDIA Container Toolkit)

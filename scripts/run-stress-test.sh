@@ -2,9 +2,9 @@
 # Quick bounded stress test with JSON output.
 #
 # Usage:
-#   examples/run-stress-test.sh
-#   examples/run-stress-test.sh probes 2
-#   examples/run-stress-test.sh compute 10 cuda
+#   scripts/run-stress-test.sh
+#   scripts/run-stress-test.sh probes 2
+#   scripts/run-stress-test.sh compute 10 cuda
 
 set -euo pipefail
 

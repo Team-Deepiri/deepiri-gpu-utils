@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Example: aggregate hardware snapshot via the library API (read-only)."""
+"""Aggregate hardware snapshot via the library API (read-only)."""
 
 from __future__ import annotations
 

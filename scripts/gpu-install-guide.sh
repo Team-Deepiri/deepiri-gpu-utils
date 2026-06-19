@@ -2,9 +2,9 @@
 # Print install + verify steps for the detected (or requested) GPU backend.
 #
 # Usage:
-#   examples/gpu-install-guide.sh
-#   examples/gpu-install-guide.sh amd
-#   examples/gpu-install-guide.sh --all
+#   scripts/gpu-install-guide.sh
+#   scripts/gpu-install-guide.sh amd
+#   scripts/gpu-install-guide.sh --all
 
 set -euo pipefail
 

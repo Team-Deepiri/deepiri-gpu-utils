@@ -2,8 +2,8 @@
 # CI / compose preflight: validate JSON contracts and exit non-zero on doctor warn.
 #
 # Usage:
-#   examples/ci-preflight.sh
-#   examples/ci-preflight.sh --strict   # also fail when no GPUs are inventoried
+#   scripts/ci-preflight.sh
+#   scripts/ci-preflight.sh --strict   # also fail when no GPUs are inventoried
 
 set -euo pipefail
 

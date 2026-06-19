@@ -2,7 +2,7 @@
 # Save a hardware snapshot for later diff in CI.
 #
 # Usage:
-#   examples/save-snapshot.sh baseline.json
+#   scripts/save-snapshot.sh baseline.json
 
 set -euo pipefail
 

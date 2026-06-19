@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Example: check whether a specific Ollama model fits this host."""
+"""Check whether a specific Ollama model fits this host."""
 
 from __future__ import annotations
 
