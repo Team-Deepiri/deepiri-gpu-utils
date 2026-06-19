@@ -58,7 +58,7 @@ def test_system_ram_gb_linux_read_error_returns_zero(monkeypatch) -> None:
 def test_system_ram_gb_darwin(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Darwin")
     monkeypatch.setattr(
-        si.subprocess, "run", run_router({"sysctl": FakeProc(returncode=0, stdout="17179869184\n")})
+        subprocess, "run", run_router({"sysctl": FakeProc(returncode=0, stdout="17179869184\n")})
     )
     assert si.system_ram_gb() == 16
 
@@ -86,7 +86,7 @@ def test_lspci_detects_nvidia(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Linux")
     monkeypatch.setattr(si.shutil, "which", which_map({"lspci": "/usr/bin/lspci"}))
     line = "01:00.0 VGA compatible controller: NVIDIA Corporation GA102 [RTX 3090]\n"
-    monkeypatch.setattr(si.subprocess, "run", run_router({"lspci": FakeProc(0, line)}))
+    monkeypatch.setattr(subprocess, "run", run_router({"lspci": FakeProc(0, line)}))
     assert si.lspci_nvidia_present() is True
 
 
@@ -94,7 +94,7 @@ def test_lspci_no_nvidia_returns_false(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Linux")
     monkeypatch.setattr(si.shutil, "which", which_map({"lspci": "/usr/bin/lspci"}))
     line = "00:02.0 VGA compatible controller: Intel Corporation UHD Graphics\n"
-    monkeypatch.setattr(si.subprocess, "run", run_router({"lspci": FakeProc(0, line)}))
+    monkeypatch.setattr(subprocess, "run", run_router({"lspci": FakeProc(0, line)}))
     assert si.lspci_nvidia_present() is False
 
 
@@ -102,7 +102,7 @@ def test_lspci_timeout_returns_none(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Linux")
     monkeypatch.setattr(si.shutil, "which", which_map({"lspci": "/usr/bin/lspci"}))
     monkeypatch.setattr(
-        si.subprocess,
+        subprocess,
         "run",
         run_router({"lspci": subprocess.TimeoutExpired(cmd="lspci", timeout=10)}),
     )
@@ -166,7 +166,7 @@ def test_dmidecode_success_as_root(monkeypatch) -> None:
     monkeypatch.setattr(si.shutil, "which", which_map({"dmidecode": "/usr/sbin/dmidecode"}))
     monkeypatch.setattr(si.os, "geteuid", lambda: 0)
     monkeypatch.setattr(
-        si.subprocess, "run", run_router({"dmidecode": FakeProc(returncode=0, stdout="ACME\n")})
+        subprocess, "run", run_router({"dmidecode": FakeProc(returncode=0, stdout="ACME\n")})
     )
     out = si.dmidecode_inventory()
     assert out["available"] is True
@@ -178,7 +178,7 @@ def test_dmidecode_no_data_as_root(monkeypatch) -> None:
     monkeypatch.setattr(si.shutil, "which", which_map({"dmidecode": "/usr/sbin/dmidecode"}))
     monkeypatch.setattr(si.os, "geteuid", lambda: 0)
     monkeypatch.setattr(
-        si.subprocess, "run", run_router({"dmidecode": FakeProc(returncode=1, stdout="")})
+        subprocess, "run", run_router({"dmidecode": FakeProc(returncode=1, stdout="")})
     )
     out = si.dmidecode_inventory()
     assert out["available"] is False

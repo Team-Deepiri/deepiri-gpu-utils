@@ -5,11 +5,11 @@ import io
 import platform
 import re
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from . import system_info
+from ._subprocess import run_text
 
 Backend = Literal["cuda", "rocm", "mps", "cpu", "unknown"]
 
@@ -86,27 +86,20 @@ def query_nvidia_smi() -> dict[str, Any] | None:
 
     if not shutil.which("nvidia-smi"):
         return None
-    try:
-        proc = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=driver_version,memory.total,name",
-                "--format=csv,noheader,nounits",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
+    res = run_text(
+        [
+            "nvidia-smi",
+            "--query-gpu=driver_version,memory.total,name",
+            "--format=csv,noheader,nounits",
+        ],
+        timeout=15,
+    )
+    if not res.ok:
         return None
-    if proc.returncode != 0:
-        return None
-    lines = (proc.stdout or "").strip().splitlines()
+    lines = res.stdout.strip().splitlines()
     if not lines:
         return None
-    parsed = _parse_nvidia_csv_line(lines[0])
-    return parsed
+    return _parse_nvidia_csv_line(lines[0])
 
 
 def query_rocm_smi() -> dict[str, Any] | None:
@@ -114,19 +107,10 @@ def query_rocm_smi() -> dict[str, Any] | None:
 
     if not shutil.which("rocm-smi"):
         return None
-    try:
-        proc = subprocess.run(
-            ["rocm-smi", "--showproductname"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
+    res = run_text(["rocm-smi", "--showproductname"], timeout=15)
+    if not res.ok:
         return None
-    if proc.returncode != 0:
-        return None
-    text = (proc.stdout or "") + (proc.stderr or "")
+    text = res.stdout + res.stderr
     return {"raw": text.strip()[:2000]}
 
 

@@ -31,3 +31,33 @@ deepiri-gpu build-args --device-type gpu
 deepiri-gpu validate --json
 deepiri-gpu ollama recommend --json
 deepiri-gpu torch-device --policy auto --json
+```
+
+## Development
+
+Requires Python >= 3.11. No runtime dependencies; `torch` is an optional extra.
+
+```bash
+# Create / activate a virtual environment (example)
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+
+# Install the package with dev tooling (pytest + ruff)
+pip install -e ".[dev]"
+
+# Optionally include the PyTorch extra for torch-device tests
+pip install -e ".[dev,torch]"
+
+# Run the test suite (CPU-only; no GPU required)
+pytest
+
+# Lint
+ruff check .
+
+# Byte-compile check
+python -m compileall src tests
+```
+
+The test suite mocks all external probes (`nvidia-smi`, `rocm-smi`, `lspci`,
+`dmidecode`, `sysctl`, Docker, and `torch`), so it runs deterministically on a
+CPU-only machine without GPU hardware.

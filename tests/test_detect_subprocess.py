@@ -27,7 +27,7 @@ def test_query_nvidia_smi_missing_binary(monkeypatch) -> None:
 def test_query_nvidia_smi_success(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"nvidia-smi": "/usr/bin/nvidia-smi"}))
     monkeypatch.setattr(
-        det.subprocess,
+        subprocess,
         "run",
         run_router({"nvidia-smi": FakeProc(returncode=0, stdout=NVIDIA_CSV + "\n")}),
     )
@@ -44,7 +44,7 @@ def test_query_nvidia_smi_success(monkeypatch) -> None:
 def test_query_nvidia_smi_nonzero_returncode(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"nvidia-smi": "/usr/bin/nvidia-smi"}))
     monkeypatch.setattr(
-        det.subprocess, "run", run_router({"nvidia-smi": FakeProc(returncode=9, stdout="boom")})
+        subprocess, "run", run_router({"nvidia-smi": FakeProc(returncode=9, stdout="boom")})
     )
     assert det.query_nvidia_smi() is None
 
@@ -52,7 +52,7 @@ def test_query_nvidia_smi_nonzero_returncode(monkeypatch) -> None:
 def test_query_nvidia_smi_empty_output(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"nvidia-smi": "/usr/bin/nvidia-smi"}))
     monkeypatch.setattr(
-        det.subprocess, "run", run_router({"nvidia-smi": FakeProc(returncode=0, stdout="   \n")})
+        subprocess, "run", run_router({"nvidia-smi": FakeProc(returncode=0, stdout="   \n")})
     )
     assert det.query_nvidia_smi() is None
 
@@ -60,7 +60,7 @@ def test_query_nvidia_smi_empty_output(monkeypatch) -> None:
 def test_query_nvidia_smi_timeout_is_swallowed(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"nvidia-smi": "/usr/bin/nvidia-smi"}))
     monkeypatch.setattr(
-        det.subprocess,
+        subprocess,
         "run",
         run_router({"nvidia-smi": subprocess.TimeoutExpired(cmd="nvidia-smi", timeout=15)}),
     )
@@ -69,7 +69,7 @@ def test_query_nvidia_smi_timeout_is_swallowed(monkeypatch) -> None:
 
 def test_query_nvidia_smi_oserror_is_swallowed(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"nvidia-smi": "/usr/bin/nvidia-smi"}))
-    monkeypatch.setattr(det.subprocess, "run", run_router({"nvidia-smi": OSError()}))
+    monkeypatch.setattr(subprocess, "run", run_router({"nvidia-smi": OSError()}))
     assert det.query_nvidia_smi() is None
 
 
@@ -101,7 +101,7 @@ def test_query_rocm_smi_missing_binary(monkeypatch) -> None:
 def test_query_rocm_smi_success(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"rocm-smi": "/opt/rocm/bin/rocm-smi"}))
     monkeypatch.setattr(
-        det.subprocess,
+        subprocess,
         "run",
         run_router({"rocm-smi": FakeProc(returncode=0, stdout="GPU0: Radeon RX 6800\n")}),
     )
@@ -113,7 +113,7 @@ def test_query_rocm_smi_success(monkeypatch) -> None:
 def test_query_rocm_smi_nonzero_returncode(monkeypatch) -> None:
     monkeypatch.setattr(det.shutil, "which", which_map({"rocm-smi": "/opt/rocm/bin/rocm-smi"}))
     monkeypatch.setattr(
-        det.subprocess, "run", run_router({"rocm-smi": FakeProc(returncode=2, stdout="err")})
+        subprocess, "run", run_router({"rocm-smi": FakeProc(returncode=2, stdout="err")})
     )
     assert det.query_rocm_smi() is None
 
