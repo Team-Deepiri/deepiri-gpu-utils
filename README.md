@@ -27,6 +27,11 @@ args, readiness checks, setup runbooks, Ollama tiering, and optional PyTorch dev
 | **`model-matrix`** | Curated Ollama model fit matrix for the detected host |
 | **`workload`** | Heuristic memory fit estimate for a model + context size |
 | **`stress`** | Bounded GPU/CPU stress test with read-only VRAM/util telemetry |
+| **`health`** | CI health gate (exit 0=ok, 1=warn, 2=fail) |
+| **`env-hints`** | Recommended runtime env vars per backend |
+| **`capacity`** | Estimate concurrent model instances that fit in memory |
+| **`top`** | List NVIDIA GPU compute processes |
+| **`snapshot`** | Save/diff hardware snapshot JSON for CI regression |
 
 Optional extra: `pip install 'deepiri-gpu-utils[torch]'`.
 
@@ -58,6 +63,12 @@ deepiri-gpu model-matrix --json
 deepiri-gpu workload mistral:7b --json
 deepiri-gpu stress --duration 5 --json
 deepiri-gpu stress --mode probes --duration 2 --json
+deepiri-gpu health --json
+deepiri-gpu env-hints --json
+deepiri-gpu capacity mistral:7b --json
+deepiri-gpu top --json
+deepiri-gpu snapshot save baseline.json
+deepiri-gpu snapshot diff baseline.json current.json
 ```
 
 ## Development

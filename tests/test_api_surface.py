@@ -12,11 +12,15 @@ from dataclasses import fields, is_dataclass
 
 from deepiri_gpu_utils import (
     build_args,
+    capacity,
     cli,
     compose_gpu,
     detect,
     doctor,
+    env_hints,
     export_env,
+    gpu_top,
+    health,
     install_check,
     inventory,
     model_fit,
@@ -24,6 +28,7 @@ from deepiri_gpu_utils import (
     ollama,
     profiles,
     setup,
+    snapshot,
     stress_test,
     summary,
     system_info,
@@ -295,3 +300,48 @@ def test_stress_test_public_api() -> None:
         "memory_used_gb",
         "memory_total_gb",
     ]
+
+
+def test_health_public_api() -> None:
+    assert callable(health.health_check)
+    assert _field_names(health.HealthReport) == [
+        "status",
+        "exit_code",
+        "backend",
+        "doctor_status",
+        "install_ready",
+        "gpu_count",
+        "checks",
+        "notes",
+    ]
+
+
+def test_env_hints_public_api() -> None:
+    assert callable(env_hints.runtime_env_hints)
+    assert _field_names(env_hints.EnvHintsResult) == ["backend", "hints", "export_lines", "notes"]
+
+
+def test_capacity_public_api() -> None:
+    assert callable(capacity.model_capacity)
+    assert _field_names(capacity.ModelCapacity) == [
+        "model",
+        "per_instance_gb",
+        "available_gb",
+        "reserved_gb",
+        "max_instances",
+        "memory_source",
+        "notes",
+    ]
+
+
+def test_gpu_top_public_api() -> None:
+    assert callable(gpu_top.gpu_top)
+    assert _field_names(gpu_top.GPUTopResult) == ["processes", "warnings", "source"]
+
+
+def test_snapshot_public_api() -> None:
+    assert callable(snapshot.capture_snapshot)
+    assert callable(snapshot.save_snapshot)
+    assert callable(snapshot.load_snapshot)
+    assert callable(snapshot.diff_snapshots)
+    assert callable(snapshot.render_diff_text)

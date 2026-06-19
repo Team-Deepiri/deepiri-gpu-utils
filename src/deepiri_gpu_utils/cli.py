@@ -6,10 +6,14 @@ from dataclasses import asdict, is_dataclass
 from typing import Any
 
 from .build_args import build_args_from_detection
+from .capacity import model_capacity
 from .compose_gpu import compose_gpu_config
 from .detect import detect
 from .doctor import doctor
+from .env_hints import runtime_env_hints
 from .export_env import build_args_shell_export
+from .gpu_top import gpu_top
+from .health import health_check
 from .install_check import install_readiness, install_readiness_all
 from .inventory import choose_suitable_gpu, gpu_inventory
 from .model_fit import model_fit_check
@@ -17,6 +21,12 @@ from .model_matrix import model_fit_matrix, render_model_matrix_text
 from .ollama import recommend_models
 from .profiles import all_backend_profiles, backend_profile
 from .setup import DeviceArg, setup_device, setup_device_mac
+from .snapshot import (
+    diff_snapshots,
+    load_snapshot,
+    render_diff_text,
+    save_snapshot,
+)
 from .stress_test import render_stress_text, run_stress_test
 from .summary import hardware_summary
 from .torch_device import resolve_torch_device
@@ -270,6 +280,56 @@ def build_parser() -> argparse.ArgumentParser:
         help="Matrix dimension for torch compute stress (default: 1024)",
     )
     p_stress.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_health = subparsers.add_parser(
+        "health",
+        help="CI health gate (exit 0=ok, 1=warn, 2=fail)",
+    )
+    p_health.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_env = subparsers.add_parser(
+        "env-hints",
+        help="Recommended runtime environment variables for the active backend",
+    )
+    p_env.add_argument(
+        "--backend",
+        default=None,
+        choices=["cuda", "rocm", "mps", "cpu"],
+        help="Override backend (default: detect)",
+    )
+    p_env.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_capacity = subparsers.add_parser(
+        "capacity",
+        help="Estimate how many concurrent model instances fit available memory",
+    )
+    p_capacity.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
+    p_capacity.add_argument(
+        "--reserved-gb",
+        type=float,
+        default=1.0,
+        help="GB to reserve for OS/runtime (default: 1.0)",
+    )
+    p_capacity.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_top = subparsers.add_parser(
+        "top",
+        help="List GPU compute processes (NVIDIA via nvidia-smi)",
+    )
+    p_top.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_snapshot = subparsers.add_parser(
+        "snapshot",
+        help="Capture or diff hardware snapshot JSON files",
+    )
+    snap_sub = p_snapshot.add_subparsers(dest="snapshot_cmd", required=True)
+    p_snap_save = snap_sub.add_parser("save", help="Save current hardware snapshot")
+    p_snap_save.add_argument("path", help="Output JSON path")
+    p_snap_save.add_argument("--json", action="store_true", help="Emit metadata JSON")
+    p_snap_diff = snap_sub.add_parser("diff", help="Diff two snapshot JSON files")
+    p_snap_diff.add_argument("left", help="Baseline snapshot path")
+    p_snap_diff.add_argument("right", help="Comparison snapshot path")
+    p_snap_diff.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -581,6 +641,71 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(render_stress_text(result))
         return 0
+
+    if args.cmd == "health":
+        report = health_check()
+        if args.json:
+            print(json.dumps(_to_jsonable(report), indent=2, sort_keys=True))
+        else:
+            print(f"health: {report.status} (exit={report.exit_code}) backend={report.backend}")
+            for check in report.checks:
+                print(f"  [{check.status}] {check.name}: {check.message}")
+        return report.exit_code
+
+    if args.cmd == "env-hints":
+        hints = runtime_env_hints(backend=args.backend)
+        if args.json:
+            print(json.dumps(_to_jsonable(hints), indent=2, sort_keys=True))
+        else:
+            print(f"env-hints: backend={hints.backend}")
+            for hint in hints.hints:
+                print(f"  {hint.key}={hint.value!r}  # {hint.reason}")
+        return 0
+
+    if args.cmd == "capacity":
+        result = model_capacity(args.model, reserved_gb=args.reserved_gb)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            print(
+                f"capacity: {result.model} -> {result.max_instances} instance(s) "
+                f"({result.per_instance_gb} GB each, {result.available_gb} GB avail)"
+            )
+        return 0
+
+    if args.cmd == "top":
+        result = gpu_top()
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            if result.processes:
+                for proc in result.processes:
+                    mem = f"{proc.used_memory_mib}MiB" if proc.used_memory_mib else "?"
+                    print(
+                        f"gpu={proc.gpu_index} pid={proc.pid} "
+                        f"{proc.process_name or 'unknown'} ({mem})"
+                    )
+            else:
+                print("No GPU processes reported.")
+            for w in result.warnings:
+                print(f"Warning: {w}")
+        return 0
+
+    if args.cmd == "snapshot":
+        if args.snapshot_cmd == "save":
+            path = save_snapshot(args.path)
+            if args.json:
+                print(json.dumps({"saved": str(path), "schema": "deepiri-gpu-snapshot/v1"}))
+            else:
+                print(f"saved snapshot: {path}")
+            return 0
+        if args.snapshot_cmd == "diff":
+            diff = diff_snapshots(load_snapshot(args.left), load_snapshot(args.right))
+            if args.json:
+                print(json.dumps(_to_jsonable(diff), indent=2, sort_keys=True))
+            else:
+                print(render_diff_text(diff))
+            return 0
 
     parser.error("Unknown command")
     return 2

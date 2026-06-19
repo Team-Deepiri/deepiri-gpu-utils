@@ -64,6 +64,8 @@ examples/generate-gpu-report.sh
 deepiri-gpu visualize
 deepiri-gpu model-matrix
 examples/run-stress-test.sh probes 2
+examples/ci-health-gate.sh
+examples/save-snapshot.sh baseline.json
 ```
 
 ## Ollama on Linux / WSL (NVIDIA Container Toolkit)

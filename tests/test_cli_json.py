@@ -41,6 +41,11 @@ EXPECTED_COMMANDS = [
     ["model-matrix", "--json"],
     ["workload", "mistral:7b", "--json"],
     ["stress", "--mode", "probes", "--duration", "0.5", "--json"],
+    ["health", "--json"],
+    ["env-hints", "--backend", "cpu", "--json"],
+    ["capacity", "mistral:7b", "--json"],
+    ["top", "--json"],
+    ["snapshot", "save", "/tmp/deepiri-gpu-test-snapshot.json", "--json"],
 ]
 
 
