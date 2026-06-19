@@ -20,6 +20,9 @@ args, readiness checks, setup runbooks, Ollama tiering, and optional PyTorch dev
 | **`summary`** | Aggregate snapshot: detect + doctor + inventory + build-args + ollama + torch-device |
 | **`export-env`** | Shell `export` lines for docker build args (compose/CI friendly) |
 | **`model-fit`** | Check whether a specific Ollama model fits detected hardware tier |
+| **`install-check`** | Driver/tooling readiness for NVIDIA, AMD/ROCm, Apple/MPS, or CPU |
+| **`profile`** | Canonical install + docker profile per backend (`cuda` / `rocm` / `mps` / `cpu`) |
+| **`compose-gpu`** | Docker Compose GPU device/deploy hints for downstream repos |
 
 Optional extra: `pip install 'deepiri-gpu-utils[torch]'`.
 
@@ -40,6 +43,11 @@ deepiri-gpu inventory --min-memory-gb 8 --json
 deepiri-gpu summary --json
 eval "$(deepiri-gpu export-env)"
 deepiri-gpu model-fit mistral:7b --json
+deepiri-gpu install-check --json
+deepiri-gpu install-check --device amd --json
+deepiri-gpu install-check --all --json
+deepiri-gpu profile --all --json
+deepiri-gpu compose-gpu --json
 ```
 
 ## Development

@@ -13,12 +13,15 @@ from dataclasses import fields, is_dataclass
 from deepiri_gpu_utils import (
     build_args,
     cli,
+    compose_gpu,
     detect,
     doctor,
     export_env,
+    install_check,
     inventory,
     model_fit,
     ollama,
+    profiles,
     setup,
     summary,
     system_info,
@@ -97,6 +100,7 @@ def test_system_info_public_api() -> None:
         "is_wsl",
         "system_ram_gb",
         "lspci_nvidia_present",
+        "lspci_amd_present",
         "docker_cli_available",
         "nvidia_container_toolkit_hint",
         "dmidecode_inventory",
@@ -165,5 +169,54 @@ def test_model_fit_public_api() -> None:
         "default_model",
         "suitable",
         "reason",
+        "notes",
+    ]
+
+
+def test_profiles_public_api() -> None:
+    assert callable(profiles.backend_profile)
+    assert callable(profiles.all_backend_profiles)
+    assert _field_names(profiles.BackendProfile) == [
+        "backend",
+        "label",
+        "device_setup_arg",
+        "required_tools",
+        "optional_tools",
+        "install_steps",
+        "verify_commands",
+        "docker_run_gpu_args",
+        "compose_deploy_devices",
+        "compose_device_requests",
+        "default_base_image",
+        "docs_url",
+    ]
+
+
+def test_install_check_public_api() -> None:
+    assert callable(install_check.install_readiness)
+    assert callable(install_check.install_readiness_all)
+    assert _field_names(install_check.InstallReadiness) == [
+        "backend",
+        "device",
+        "profile_label",
+        "ready",
+        "checks",
+        "missing_required",
+        "install_steps",
+        "verify_commands",
+        "pci_visible",
+        "drivers_missing",
+        "notes",
+    ]
+
+
+def test_compose_gpu_public_api() -> None:
+    assert callable(compose_gpu.compose_gpu_config)
+    assert _field_names(compose_gpu.ComposeGPUConfig) == [
+        "backend",
+        "deploy_devices",
+        "device_requests",
+        "run_gpu_args",
+        "environment",
         "notes",
     ]

@@ -115,6 +115,7 @@ def force_cpu(monkeypatch):
     monkeypatch.setattr(det, "query_nvidia_smi", lambda: None)
     monkeypatch.setattr(det, "query_rocm_smi", lambda: None)
     monkeypatch.setattr(det.system_info, "lspci_nvidia_present", lambda: None)
+    monkeypatch.setattr(det.system_info, "lspci_amd_present", lambda: False)
     monkeypatch.setattr(det.system_info, "is_wsl", lambda: False)
     monkeypatch.setattr(det.platform, "system", lambda: "Linux")
     monkeypatch.setattr(det.platform, "machine", lambda: "x86_64")

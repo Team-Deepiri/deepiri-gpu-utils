@@ -19,6 +19,7 @@ class TestDetect(unittest.TestCase):
 
     @patch.object(det, "query_nvidia_smi", return_value=None)
     @patch.object(det.system_info, "lspci_nvidia_present", return_value=False)
+    @patch.object(det.system_info, "lspci_amd_present", return_value=False)
     @patch.object(det, "query_rocm_smi", return_value=None)
     @patch("deepiri_gpu_utils.detect.platform.system", return_value="Linux")
     @patch("deepiri_gpu_utils.detect.platform.machine", return_value="x86_64")

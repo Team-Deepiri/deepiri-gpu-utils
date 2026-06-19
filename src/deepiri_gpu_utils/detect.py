@@ -172,6 +172,27 @@ def detect(*, prefer: str | Backend | None = None) -> DetectResult:
                 warnings=warnings,
             )
 
+        lspci_amd = system_info.lspci_amd_present()
+        if lspci_amd is True:
+            warnings.extend(_prefer_mismatch_warnings(pref, "rocm"))
+            warnings.append(
+                "AMD GPU visible on PCI but rocm-smi failed; install ROCm drivers/stack."
+            )
+            wsl = system_info.is_wsl()
+            if wsl:
+                warnings.append("ROCm on WSL is limited; prefer native Linux for AMD GPU dev.")
+            return DetectResult(
+                backend="rocm",
+                confidence=0.48,
+                details={
+                    "platform": "Linux",
+                    "rocm_drivers_missing": True,
+                    "lspci_amd": True,
+                    "wsl": wsl,
+                },
+                warnings=warnings,
+            )
+
     rocm = query_rocm_smi()
     if rocm is not None:
         warnings.extend(_prefer_mismatch_warnings(pref, "rocm"))

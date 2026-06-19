@@ -6,12 +6,15 @@ from dataclasses import asdict, is_dataclass
 from typing import Any
 
 from .build_args import build_args_from_detection
+from .compose_gpu import compose_gpu_config
 from .detect import detect
 from .doctor import doctor
 from .export_env import build_args_shell_export
+from .install_check import install_readiness, install_readiness_all
 from .inventory import choose_suitable_gpu, gpu_inventory
 from .model_fit import model_fit_check
 from .ollama import recommend_models
+from .profiles import all_backend_profiles, backend_profile
 from .setup import DeviceArg, setup_device, setup_device_mac
 from .summary import hardware_summary
 from .torch_device import resolve_torch_device
@@ -156,6 +159,52 @@ def build_parser() -> argparse.ArgumentParser:
     p_model_fit.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
     p_model_fit.add_argument("--backend-hint", default=None, help="Optional backend hint")
     p_model_fit.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_install = subparsers.add_parser(
+        "install-check",
+        help="Check driver/tooling install readiness for NVIDIA, AMD, Apple, or CPU",
+    )
+    p_install.add_argument(
+        "--device",
+        default="auto",
+        choices=["auto", "nvidia", "amd", "apple", "cpu"],
+        help="Target device profile (default: auto-detect)",
+    )
+    p_install.add_argument(
+        "--all",
+        action="store_true",
+        help="Report readiness for every backend profile (cuda, rocm, mps, cpu)",
+    )
+    p_install.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_profile = subparsers.add_parser(
+        "profile",
+        help="Show canonical install/docker profile for a GPU backend",
+    )
+    p_profile.add_argument(
+        "--backend",
+        default=None,
+        choices=["cuda", "rocm", "mps", "cpu"],
+        help="Backend profile to show (default: detected backend)",
+    )
+    p_profile.add_argument(
+        "--all",
+        action="store_true",
+        help="List all backend profiles",
+    )
+    p_profile.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_compose = subparsers.add_parser(
+        "compose-gpu",
+        help="Emit Docker Compose GPU device/deploy hints for the active backend",
+    )
+    p_compose.add_argument(
+        "--backend",
+        default=None,
+        choices=["cuda", "rocm", "mps", "cpu"],
+        help="Override backend (default: detect)",
+    )
+    p_compose.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -321,6 +370,71 @@ def main(argv: list[str] | None = None) -> int:
             print(f"model-fit: {result.model} -> {result.fit} (suitable={result.suitable})")
             print(f"  {result.reason}")
             for note in result.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "install-check":
+        if args.all:
+            results = install_readiness_all()
+            if args.json:
+                print(json.dumps(_to_jsonable(results), indent=2, sort_keys=True))
+            else:
+                for item in results:
+                    status = "ready" if item.ready else "missing"
+                    print(f"{item.backend}: {status} (device={item.device})")
+                    if item.missing_required:
+                        print(f"  missing: {', '.join(item.missing_required)}")
+            return 0
+
+        result = install_readiness(device=args.device)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            status = "ready" if result.ready else "not ready"
+            print(f"install-check: {result.profile_label} -> {status}")
+            if result.missing_required:
+                print(f"  missing required: {', '.join(result.missing_required)}")
+            if result.drivers_missing:
+                print("  drivers/tooling missing for PCI-visible GPU")
+            for step in result.install_steps[:3]:
+                print(f"  - {step}")
+        return 0
+
+    if args.cmd == "profile":
+        if args.all:
+            profiles = all_backend_profiles()
+            if args.json:
+                print(json.dumps(_to_jsonable(profiles), indent=2, sort_keys=True))
+            else:
+                for profile in profiles:
+                    print(f"{profile.backend}: {profile.label}")
+            return 0
+
+        backend = args.backend
+        if backend is None:
+            d = detect()
+            backend = d.backend if d.backend in ("cuda", "rocm", "mps", "cpu") else "cpu"
+        profile = backend_profile(backend)
+        if args.json:
+            print(json.dumps(_to_jsonable(profile), indent=2, sort_keys=True))
+        else:
+            print(f"{profile.label} ({profile.backend})")
+            print("Install:")
+            for step in profile.install_steps:
+                print(f"  - {step}")
+        return 0
+
+    if args.cmd == "compose-gpu":
+        cfg = compose_gpu_config(backend=args.backend)
+        if args.json:
+            print(json.dumps(_to_jsonable(cfg), indent=2, sort_keys=True))
+        else:
+            print(f"compose-gpu: backend={cfg.backend}")
+            if cfg.deploy_devices:
+                print(f"  deploy.devices: {cfg.deploy_devices}")
+            if cfg.run_gpu_args:
+                print(f"  docker run args: {' '.join(cfg.run_gpu_args)}")
+            for note in cfg.notes:
                 print(f"  note: {note}")
         return 0
 

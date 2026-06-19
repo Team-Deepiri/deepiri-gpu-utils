@@ -42,6 +42,18 @@ examples/ci-preflight.sh
 examples/ci-preflight.sh --strict   # fail when detect≠cpu but inventory is empty
 ```
 
+## GPU install guides (all backends)
+
+NVIDIA (CUDA), AMD (ROCm), Apple (MPS), and CPU-only each have a canonical
+profile with install steps, verify commands, and compose/docker hints:
+
+```bash
+deepiri-gpu profile --all --json
+deepiri-gpu install-check --all --json
+examples/gpu-install-guide.sh
+examples/gpu-install-guide.sh amd
+```
+
 ## Library API scripts
 
 ```bash

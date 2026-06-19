@@ -146,6 +146,7 @@ def test_detect_cuda_lspci_fallback_confidence(monkeypatch) -> None:
 def test_detect_rocm_confidence(monkeypatch) -> None:
     monkeypatch.setattr(det, "query_nvidia_smi", lambda: None)
     monkeypatch.setattr(det.system_info, "lspci_nvidia_present", lambda: None)
+    monkeypatch.setattr(det.system_info, "lspci_amd_present", lambda: False)
     monkeypatch.setattr(det, "query_rocm_smi", lambda: {"raw": "Radeon"})
     monkeypatch.setattr(det.system_info, "is_wsl", lambda: False)
     monkeypatch.setattr(det.platform, "system", lambda: "Linux")

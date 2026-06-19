@@ -11,6 +11,10 @@ from typing import Any
 from ._subprocess import run_text
 
 _NVIDIA_PCI_RE = re.compile(r"nvidia|vga.*nvidia", re.IGNORECASE)
+_AMD_PCI_RE = re.compile(
+    r"advanced micro devices|\[amd/ati\]|vga.*\bamd\b|\bamd\b.*vga",
+    re.IGNORECASE,
+)
 
 
 def is_wsl() -> bool:
@@ -57,6 +61,20 @@ def lspci_nvidia_present() -> bool | None:
         return None
     for line in res.stdout.splitlines():
         if _NVIDIA_PCI_RE.search(line):
+            return True
+    return False
+
+
+def lspci_amd_present() -> bool | None:
+    """Return True if lspci shows AMD/ATI; None if lspci missing or failed."""
+
+    if platform.system() != "Linux" or not shutil.which("lspci"):
+        return None
+    res = run_text(["lspci"], timeout=10)
+    if not res.ok or not res.stdout:
+        return None
+    for line in res.stdout.splitlines():
+        if _AMD_PCI_RE.search(line):
             return True
     return False
 

@@ -80,6 +80,13 @@ def doctor() -> DoctorReport:
         )
         status = "warn"
 
+    if d.details.get("rocm_drivers_missing"):
+        runbook.append(
+            "PCI shows AMD but ROCm tooling is missing: install the ROCm stack until "
+            "`rocm-smi` works."
+        )
+        status = "warn"
+
     if d.backend == "rocm":
         runbook.append(
             "ROCm: install AMD ROCm stack for your distro; Docker ROCm images differ "

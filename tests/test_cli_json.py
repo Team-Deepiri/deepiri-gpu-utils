@@ -32,6 +32,11 @@ EXPECTED_COMMANDS = [
     ["export-env", "--device-type", "cpu"],
     ["export-env", "--prefix", "CYREX_"],
     ["model-fit", "mistral:7b", "--json"],
+    ["install-check", "--device", "cpu", "--json"],
+    ["install-check", "--all", "--json"],
+    ["profile", "--all", "--json"],
+    ["profile", "--backend", "rocm", "--json"],
+    ["compose-gpu", "--backend", "cuda", "--json"],
 ]
 
 
