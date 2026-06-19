@@ -6,11 +6,32 @@ from dataclasses import asdict, is_dataclass
 from typing import Any
 
 from .build_args import build_args_from_detection
+from .capacity import model_capacity
+from .compose_gpu import compose_gpu_config
 from .detect import detect
 from .doctor import doctor
+from .env_hints import runtime_env_hints
+from .export_env import build_args_shell_export
+from .gpu_top import gpu_top
+from .health import health_check
+from .install_check import install_readiness, install_readiness_all
+from .inventory import choose_suitable_gpu, gpu_inventory
+from .model_fit import model_fit_check
+from .model_matrix import model_fit_matrix, render_model_matrix_text
 from .ollama import recommend_models
+from .profiles import all_backend_profiles, backend_profile
 from .setup import DeviceArg, setup_device, setup_device_mac
+from .snapshot import (
+    diff_snapshots,
+    load_snapshot,
+    render_diff_text,
+    save_snapshot,
+)
+from .stress_test import render_stress_text, run_stress_test
+from .summary import hardware_summary
 from .torch_device import resolve_torch_device
+from .visualize import render_dashboard, render_html_report
+from .workload import estimate_workload
 
 
 def _to_jsonable(obj: Any) -> Any:
@@ -105,6 +126,210 @@ def build_parser() -> argparse.ArgumentParser:
         help="Device selection policy",
     )
     p_torch.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_inventory = subparsers.add_parser(
+        "inventory",
+        help="List detected GPUs (read-only); optional VRAM suitability check",
+    )
+    p_inventory.add_argument(
+        "--min-memory-gb",
+        type=float,
+        default=None,
+        help="If set, include a suitability selection for this minimum VRAM (GB)",
+    )
+    p_inventory.add_argument(
+        "--backend",
+        default=None,
+        help="Optional backend filter for the suitability check (cuda/rocm/mps)",
+    )
+    p_inventory.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_summary = subparsers.add_parser(
+        "summary",
+        help="Aggregate detect, doctor, inventory, build-args, ollama, torch-device",
+    )
+    p_summary.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_export = subparsers.add_parser(
+        "export-env",
+        help="Print shell export lines for docker build args (read-only)",
+    )
+    p_export.add_argument(
+        "--device-type",
+        default="auto",
+        choices=["auto", "gpu", "cpu", "mpsos"],
+        help="Override detection (default: auto from detect)",
+    )
+    p_export.add_argument(
+        "--prefix",
+        default="",
+        help="Optional prefix for exported variable names (e.g. CYREX_)",
+    )
+
+    p_model_fit = subparsers.add_parser(
+        "model-fit",
+        help="Check whether a specific Ollama model fits this hardware",
+    )
+    p_model_fit.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
+    p_model_fit.add_argument("--backend-hint", default=None, help="Optional backend hint")
+    p_model_fit.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_install = subparsers.add_parser(
+        "install-check",
+        help="Check driver/tooling install readiness for NVIDIA, AMD, Apple, or CPU",
+    )
+    p_install.add_argument(
+        "--device",
+        default="auto",
+        choices=["auto", "nvidia", "amd", "apple", "cpu"],
+        help="Target device profile (default: auto-detect)",
+    )
+    p_install.add_argument(
+        "--all",
+        action="store_true",
+        help="Report readiness for every backend profile (cuda, rocm, mps, cpu)",
+    )
+    p_install.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_profile = subparsers.add_parser(
+        "profile",
+        help="Show canonical install/docker profile for a GPU backend",
+    )
+    p_profile.add_argument(
+        "--backend",
+        default=None,
+        choices=["cuda", "rocm", "mps", "cpu"],
+        help="Backend profile to show (default: detected backend)",
+    )
+    p_profile.add_argument(
+        "--all",
+        action="store_true",
+        help="List all backend profiles",
+    )
+    p_profile.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_compose = subparsers.add_parser(
+        "compose-gpu",
+        help="Emit Docker Compose GPU device/deploy hints for the active backend",
+    )
+    p_compose.add_argument(
+        "--backend",
+        default=None,
+        choices=["cuda", "rocm", "mps", "cpu"],
+        help="Override backend (default: detect)",
+    )
+    p_compose.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_visualize = subparsers.add_parser(
+        "visualize",
+        help="ASCII terminal dashboard or self-contained HTML hardware report",
+    )
+    p_visualize.add_argument(
+        "--html",
+        metavar="PATH",
+        default=None,
+        help="Write HTML report to PATH instead of printing ASCII dashboard",
+    )
+    p_visualize.add_argument("--json", action="store_true", help="Emit dashboard metadata JSON")
+
+    p_matrix = subparsers.add_parser(
+        "model-matrix",
+        help="Show curated Ollama model fit matrix for this host",
+    )
+    p_matrix.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_workload = subparsers.add_parser(
+        "workload",
+        help="Estimate whether a model workload fits available memory",
+    )
+    p_workload.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
+    p_workload.add_argument(
+        "--context-tokens",
+        type=int,
+        default=4096,
+        help="Context window size for memory overhead estimate",
+    )
+    p_workload.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_stress = subparsers.add_parser(
+        "stress",
+        help="Bounded GPU/CPU stress test with read-only telemetry sampling",
+    )
+    p_stress.add_argument(
+        "--duration",
+        type=float,
+        default=5.0,
+        help="Stress duration in seconds (0.5-120, default: 5)",
+    )
+    p_stress.add_argument(
+        "--mode",
+        default="compute",
+        choices=["compute", "probes"],
+        help="compute=matmul load, probes=read-only detect/inventory loop",
+    )
+    p_stress.add_argument(
+        "--backend",
+        default="auto",
+        choices=["auto", "cuda", "mps", "cpu", "probes"],
+        help="Target device for compute stress (default: auto)",
+    )
+    p_stress.add_argument(
+        "--matrix-size",
+        type=int,
+        default=1024,
+        help="Matrix dimension for torch compute stress (default: 1024)",
+    )
+    p_stress.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_health = subparsers.add_parser(
+        "health",
+        help="CI health gate (exit 0=ok, 1=warn, 2=fail)",
+    )
+    p_health.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_env = subparsers.add_parser(
+        "env-hints",
+        help="Recommended runtime environment variables for the active backend",
+    )
+    p_env.add_argument(
+        "--backend",
+        default=None,
+        choices=["cuda", "rocm", "mps", "cpu"],
+        help="Override backend (default: detect)",
+    )
+    p_env.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_capacity = subparsers.add_parser(
+        "capacity",
+        help="Estimate how many concurrent model instances fit available memory",
+    )
+    p_capacity.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
+    p_capacity.add_argument(
+        "--reserved-gb",
+        type=float,
+        default=1.0,
+        help="GB to reserve for OS/runtime (default: 1.0)",
+    )
+    p_capacity.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_top = subparsers.add_parser(
+        "top",
+        help="List GPU compute processes (NVIDIA via nvidia-smi)",
+    )
+    p_top.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_snapshot = subparsers.add_parser(
+        "snapshot",
+        help="Capture or diff hardware snapshot JSON files",
+    )
+    snap_sub = p_snapshot.add_subparsers(dest="snapshot_cmd", required=True)
+    p_snap_save = snap_sub.add_parser("save", help="Save current hardware snapshot")
+    p_snap_save.add_argument("path", help="Output JSON path")
+    p_snap_save.add_argument("--json", action="store_true", help="Emit metadata JSON")
+    p_snap_diff = snap_sub.add_parser("diff", help="Diff two snapshot JSON files")
+    p_snap_diff.add_argument("left", help="Baseline snapshot path")
+    p_snap_diff.add_argument("right", help="Comparison snapshot path")
+    p_snap_diff.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -204,6 +429,283 @@ def main(argv: list[str] | None = None) -> int:
             for n in td.notes:
                 print(f"  note: {n}")
         return 0
+
+    if args.cmd == "inventory":
+        inv = gpu_inventory()
+        selection = None
+        if args.min_memory_gb is not None:
+            selection = choose_suitable_gpu(args.min_memory_gb, backend=args.backend)
+        if args.json:
+            payload = _to_jsonable(inv)
+            if selection is not None:
+                payload["selection"] = _to_jsonable(selection)
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            if inv.gpus:
+                for g in inv.gpus:
+                    idx = g.index if g.index is not None else "-"
+                    mem = f"{g.memory_gb}GB" if g.memory_gb is not None else "VRAM=?"
+                    print(f"[{idx}] {g.backend} {g.name or 'unknown'} ({mem}) via {g.source}")
+            else:
+                print("No GPUs detected.")
+            for w in inv.warnings:
+                print(f"Warning: {w}")
+            if selection is not None:
+                print(
+                    f"Suitable for {args.min_memory_gb}GB: "
+                    f"{selection.suitable} - {selection.reason}"
+                )
+        return 0
+
+    if args.cmd == "summary":
+        snap = hardware_summary()
+        if args.json:
+            payload = {
+                "detect": _to_jsonable(snap.detect),
+                "doctor": _to_jsonable(snap.doctor),
+                "inventory": _to_jsonable(snap.inventory),
+                "build_args": _to_jsonable(snap.build_args),
+                "ollama": _to_jsonable(snap.ollama),
+                "torch_device": _to_jsonable(snap.torch_device),
+                "system_ram_gb": snap.system_ram_gb,
+                "gpu_count": snap.gpu_count,
+                "total_vram_gb": snap.total_vram_gb,
+                "notes": snap.notes,
+            }
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print(
+                f"summary: backend={snap.detect.backend} doctor={snap.doctor.status} "
+                f"gpus={snap.gpu_count} torch={snap.torch_device.device}"
+            )
+            for note in snap.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "export-env":
+        export = build_args_shell_export(device_type=args.device_type, prefix=args.prefix)
+        print("\n".join(export.lines))
+        return 0
+
+    if args.cmd == "model-fit":
+        result = model_fit_check(args.model, backend_hint=args.backend_hint)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            print(f"model-fit: {result.model} -> {result.fit} (suitable={result.suitable})")
+            print(f"  {result.reason}")
+            for note in result.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "install-check":
+        if args.all:
+            results = install_readiness_all()
+            if args.json:
+                print(json.dumps(_to_jsonable(results), indent=2, sort_keys=True))
+            else:
+                for item in results:
+                    status = "ready" if item.ready else "missing"
+                    print(f"{item.backend}: {status} (device={item.device})")
+                    if item.missing_required:
+                        print(f"  missing: {', '.join(item.missing_required)}")
+            return 0
+
+        result = install_readiness(device=args.device)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            status = "ready" if result.ready else "not ready"
+            print(f"install-check: {result.profile_label} -> {status}")
+            if result.missing_required:
+                print(f"  missing required: {', '.join(result.missing_required)}")
+            if result.drivers_missing:
+                print("  drivers/tooling missing for PCI-visible GPU")
+            for step in result.install_steps[:3]:
+                print(f"  - {step}")
+        return 0
+
+    if args.cmd == "profile":
+        if args.all:
+            profiles = all_backend_profiles()
+            if args.json:
+                print(json.dumps(_to_jsonable(profiles), indent=2, sort_keys=True))
+            else:
+                for profile in profiles:
+                    print(f"{profile.backend}: {profile.label}")
+            return 0
+
+        backend = args.backend
+        if backend is None:
+            d = detect()
+            backend = d.backend if d.backend in ("cuda", "rocm", "mps", "cpu") else "cpu"
+        profile = backend_profile(backend)
+        if args.json:
+            print(json.dumps(_to_jsonable(profile), indent=2, sort_keys=True))
+        else:
+            print(f"{profile.label} ({profile.backend})")
+            print("Install:")
+            for step in profile.install_steps:
+                print(f"  - {step}")
+        return 0
+
+    if args.cmd == "compose-gpu":
+        cfg = compose_gpu_config(backend=args.backend)
+        if args.json:
+            print(json.dumps(_to_jsonable(cfg), indent=2, sort_keys=True))
+        else:
+            print(f"compose-gpu: backend={cfg.backend}")
+            if cfg.deploy_devices:
+                print(f"  deploy.devices: {cfg.deploy_devices}")
+            if cfg.run_gpu_args:
+                print(f"  docker run args: {' '.join(cfg.run_gpu_args)}")
+            for note in cfg.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "visualize":
+        if args.html:
+            path = args.html
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(render_html_report())
+            if args.json:
+                dash = render_dashboard()
+                print(
+                    json.dumps(
+                        {
+                            "format": "html",
+                            "path": path,
+                            "backend": dash.backend,
+                            "gpu_count": dash.gpu_count,
+                            "doctor_status": dash.doctor_status,
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+            else:
+                print(f"wrote HTML report: {path}")
+            return 0
+
+        dash = render_dashboard()
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "format": "ascii",
+                        "backend": dash.backend,
+                        "gpu_count": dash.gpu_count,
+                        "doctor_status": dash.doctor_status,
+                        "text": dash.text,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(dash.text)
+        return 0
+
+    if args.cmd == "model-matrix":
+        matrix = model_fit_matrix()
+        if args.json:
+            print(json.dumps(_to_jsonable(matrix), indent=2, sort_keys=True))
+        else:
+            print(render_model_matrix_text(matrix))
+        return 0
+
+    if args.cmd == "workload":
+        result = estimate_workload(args.model, context_tokens=args.context_tokens)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            verdict = "fits" if result.fits else "does not fit"
+            print(
+                f"workload: {result.model} -> {verdict} "
+                f"({result.estimated_memory_gb} GB est / {result.available_memory_gb} GB avail)"
+            )
+            print(f"  headroom: {result.headroom_gb} GB via {result.memory_source}")
+            for note in result.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "stress":
+        result = run_stress_test(
+            duration_s=args.duration,
+            mode=args.mode,
+            backend=args.backend,
+            matrix_size=args.matrix_size,
+        )
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            print(render_stress_text(result))
+        return 0
+
+    if args.cmd == "health":
+        report = health_check()
+        if args.json:
+            print(json.dumps(_to_jsonable(report), indent=2, sort_keys=True))
+        else:
+            print(f"health: {report.status} (exit={report.exit_code}) backend={report.backend}")
+            for check in report.checks:
+                print(f"  [{check.status}] {check.name}: {check.message}")
+        return report.exit_code
+
+    if args.cmd == "env-hints":
+        hints = runtime_env_hints(backend=args.backend)
+        if args.json:
+            print(json.dumps(_to_jsonable(hints), indent=2, sort_keys=True))
+        else:
+            print(f"env-hints: backend={hints.backend}")
+            for hint in hints.hints:
+                print(f"  {hint.key}={hint.value!r}  # {hint.reason}")
+        return 0
+
+    if args.cmd == "capacity":
+        result = model_capacity(args.model, reserved_gb=args.reserved_gb)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            print(
+                f"capacity: {result.model} -> {result.max_instances} instance(s) "
+                f"({result.per_instance_gb} GB each, {result.available_gb} GB avail)"
+            )
+        return 0
+
+    if args.cmd == "top":
+        result = gpu_top()
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            if result.processes:
+                for proc in result.processes:
+                    mem = f"{proc.used_memory_mib}MiB" if proc.used_memory_mib else "?"
+                    print(
+                        f"gpu={proc.gpu_index} pid={proc.pid} "
+                        f"{proc.process_name or 'unknown'} ({mem})"
+                    )
+            else:
+                print("No GPU processes reported.")
+            for w in result.warnings:
+                print(f"Warning: {w}")
+        return 0
+
+    if args.cmd == "snapshot":
+        if args.snapshot_cmd == "save":
+            path = save_snapshot(args.path)
+            if args.json:
+                print(json.dumps({"saved": str(path), "schema": "deepiri-gpu-snapshot/v1"}))
+            else:
+                print(f"saved snapshot: {path}")
+            return 0
+        if args.snapshot_cmd == "diff":
+            diff = diff_snapshots(load_snapshot(args.left), load_snapshot(args.right))
+            if args.json:
+                print(json.dumps(_to_jsonable(diff), indent=2, sort_keys=True))
+            else:
+                print(render_diff_text(diff))
+            return 0
 
     parser.error("Unknown command")
     return 2

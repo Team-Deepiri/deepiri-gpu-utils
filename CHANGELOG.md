@@ -12,4 +12,4 @@
   `check-ollama-models.sh`; `validate` includes ollama summary
 - **Phase 4:** `resolve_torch_device()` with optional `[torch]` extra
 - **Phase 5:** Linux **lspci** NVIDIA path when `nvidia-smi` missing; WSL/ROCm warnings in `detect`
-- **Phase 6:** `examples/` compose fragment + README; top-level README matrix
+- **Phase 6:** `scripts/` compose fragment + README; top-level README matrix

@@ -7,7 +7,7 @@ name = "deepiri-gpu-utils"
 version = "0.1.0"
 description = "Deepiri Hybrid LLM Build & Dev Toolkit (GPU detection, setup, and device helpers)"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 dependencies = []
 

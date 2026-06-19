@@ -210,6 +210,18 @@ _CURATED: list[tuple[str, str]] = [
 ]
 
 
+def curated_model_ids() -> list[str]:
+    """Return curated Ollama model ids (stable order from check-ollama-models.sh)."""
+
+    return [model_id for model_id, _desc in _CURATED]
+
+
+def curated_models() -> list[tuple[str, str]]:
+    """Return curated Ollama model ids and descriptions (stable order)."""
+
+    return list(_CURATED)
+
+
 def _effective_vram_gb(d: DetectResult, ram_gb: int) -> int:
     if d.backend == "mps":
         return ram_gb
