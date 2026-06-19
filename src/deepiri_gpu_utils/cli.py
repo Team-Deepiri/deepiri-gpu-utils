@@ -8,6 +8,7 @@ from typing import Any
 from .build_args import build_args_from_detection
 from .detect import detect
 from .doctor import doctor
+from .inventory import choose_suitable_gpu, gpu_inventory
 from .ollama import recommend_models
 from .setup import DeviceArg, setup_device, setup_device_mac
 from .torch_device import resolve_torch_device
@@ -106,6 +107,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_torch.add_argument("--json", action="store_true", help="Emit JSON")
 
+    p_inventory = subparsers.add_parser(
+        "inventory",
+        help="List detected GPUs (read-only); optional VRAM suitability check",
+    )
+    p_inventory.add_argument(
+        "--min-memory-gb",
+        type=float,
+        default=None,
+        help="If set, include a suitability selection for this minimum VRAM (GB)",
+    )
+    p_inventory.add_argument(
+        "--backend",
+        default=None,
+        help="Optional backend filter for the suitability check (cuda/rocm/mps)",
+    )
+    p_inventory.add_argument("--json", action="store_true", help="Emit JSON")
+
     return parser
 
 
@@ -203,6 +221,33 @@ def main(argv: list[str] | None = None) -> int:
             print(f"torch device: {td.device} (torch_installed={td.torch_available})")
             for n in td.notes:
                 print(f"  note: {n}")
+        return 0
+
+    if args.cmd == "inventory":
+        inv = gpu_inventory()
+        selection = None
+        if args.min_memory_gb is not None:
+            selection = choose_suitable_gpu(args.min_memory_gb, backend=args.backend)
+        if args.json:
+            payload = _to_jsonable(inv)
+            if selection is not None:
+                payload["selection"] = _to_jsonable(selection)
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            if inv.gpus:
+                for g in inv.gpus:
+                    idx = g.index if g.index is not None else "-"
+                    mem = f"{g.memory_gb}GB" if g.memory_gb is not None else "VRAM=?"
+                    print(f"[{idx}] {g.backend} {g.name or 'unknown'} ({mem}) via {g.source}")
+            else:
+                print("No GPUs detected.")
+            for w in inv.warnings:
+                print(f"Warning: {w}")
+            if selection is not None:
+                print(
+                    f"Suitable for {args.min_memory_gb}GB: "
+                    f"{selection.suitable} - {selection.reason}"
+                )
         return 0
 
     parser.error("Unknown command")

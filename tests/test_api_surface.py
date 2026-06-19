@@ -10,7 +10,16 @@ from __future__ import annotations
 import inspect
 from dataclasses import fields, is_dataclass
 
-from deepiri_gpu_utils import build_args, cli, detect, doctor, ollama, setup, system_info
+from deepiri_gpu_utils import (
+    build_args,
+    cli,
+    detect,
+    doctor,
+    inventory,
+    ollama,
+    setup,
+    system_info,
+)
 from deepiri_gpu_utils import torch_device as td
 
 
@@ -95,3 +104,27 @@ def test_system_info_public_api() -> None:
 def test_cli_public_api() -> None:
     assert callable(cli.build_parser)
     assert callable(cli.main)
+
+
+def test_inventory_public_api() -> None:
+    assert callable(inventory.gpu_inventory)
+    assert callable(inventory.choose_suitable_gpu)
+    assert _field_names(inventory.GPUInfo) == [
+        "backend",
+        "index",
+        "name",
+        "memory_mib",
+        "memory_gb",
+        "utilization_percent",
+        "driver_version",
+        "source",
+        "details",
+    ]
+    assert _field_names(inventory.GPUInventoryResult) == ["gpus", "warnings", "source"]
+    assert _field_names(inventory.GPUSelection) == [
+        "selected",
+        "suitable",
+        "reason",
+        "candidates",
+        "min_memory_gb",
+    ]
