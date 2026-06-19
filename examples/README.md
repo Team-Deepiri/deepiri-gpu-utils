@@ -63,6 +63,7 @@ python examples/check-model-fit.py mistral:7b --json
 examples/generate-gpu-report.sh
 deepiri-gpu visualize
 deepiri-gpu model-matrix
+examples/run-stress-test.sh probes 2
 ```
 
 ## Ollama on Linux / WSL (NVIDIA Container Toolkit)

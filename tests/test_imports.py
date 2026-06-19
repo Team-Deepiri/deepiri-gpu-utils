@@ -26,6 +26,7 @@ PUBLIC_MODULES = [
     "deepiri_gpu_utils.ollama",
     "deepiri_gpu_utils.profiles",
     "deepiri_gpu_utils.setup",
+    "deepiri_gpu_utils.stress_test",
     "deepiri_gpu_utils.summary",
     "deepiri_gpu_utils.system_info",
     "deepiri_gpu_utils.torch_device",

@@ -24,6 +24,7 @@ from deepiri_gpu_utils import (
     ollama,
     profiles,
     setup,
+    stress_test,
     summary,
     system_info,
     visualize,
@@ -268,4 +269,29 @@ def test_workload_public_api() -> None:
         "fits",
         "headroom_gb",
         "notes",
+    ]
+
+
+def test_stress_test_public_api() -> None:
+    assert callable(stress_test.run_stress_test)
+    assert callable(stress_test.render_stress_text)
+    assert _field_names(stress_test.StressTestResult) == [
+        "mode",
+        "backend",
+        "device",
+        "duration_requested_s",
+        "duration_actual_s",
+        "iterations",
+        "ops_per_sec",
+        "matrix_size",
+        "telemetry_samples",
+        "peak_utilization_percent",
+        "notes",
+        "success",
+    ]
+    assert _field_names(stress_test.TelemetrySample) == [
+        "elapsed_s",
+        "gpu_utilization_percent",
+        "memory_used_gb",
+        "memory_total_gb",
     ]

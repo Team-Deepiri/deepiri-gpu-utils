@@ -40,6 +40,7 @@ EXPECTED_COMMANDS = [
     ["visualize", "--json"],
     ["model-matrix", "--json"],
     ["workload", "mistral:7b", "--json"],
+    ["stress", "--mode", "probes", "--duration", "0.5", "--json"],
 ]
 
 

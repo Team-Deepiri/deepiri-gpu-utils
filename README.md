@@ -26,6 +26,7 @@ args, readiness checks, setup runbooks, Ollama tiering, and optional PyTorch dev
 | **`visualize`** | ASCII terminal dashboard or self-contained HTML hardware report |
 | **`model-matrix`** | Curated Ollama model fit matrix for the detected host |
 | **`workload`** | Heuristic memory fit estimate for a model + context size |
+| **`stress`** | Bounded GPU/CPU stress test with read-only VRAM/util telemetry |
 
 Optional extra: `pip install 'deepiri-gpu-utils[torch]'`.
 
@@ -55,6 +56,8 @@ deepiri-gpu visualize
 deepiri-gpu visualize --html gpu-report.html
 deepiri-gpu model-matrix --json
 deepiri-gpu workload mistral:7b --json
+deepiri-gpu stress --duration 5 --json
+deepiri-gpu stress --mode probes --duration 2 --json
 ```
 
 ## Development

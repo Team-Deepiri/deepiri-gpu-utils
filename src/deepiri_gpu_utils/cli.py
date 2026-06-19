@@ -17,6 +17,7 @@ from .model_matrix import model_fit_matrix, render_model_matrix_text
 from .ollama import recommend_models
 from .profiles import all_backend_profiles, backend_profile
 from .setup import DeviceArg, setup_device, setup_device_mac
+from .stress_test import render_stress_text, run_stress_test
 from .summary import hardware_summary
 from .torch_device import resolve_torch_device
 from .visualize import render_dashboard, render_html_report
@@ -239,6 +240,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Context window size for memory overhead estimate",
     )
     p_workload.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_stress = subparsers.add_parser(
+        "stress",
+        help="Bounded GPU/CPU stress test with read-only telemetry sampling",
+    )
+    p_stress.add_argument(
+        "--duration",
+        type=float,
+        default=5.0,
+        help="Stress duration in seconds (0.5-120, default: 5)",
+    )
+    p_stress.add_argument(
+        "--mode",
+        default="compute",
+        choices=["compute", "probes"],
+        help="compute=matmul load, probes=read-only detect/inventory loop",
+    )
+    p_stress.add_argument(
+        "--backend",
+        default="auto",
+        choices=["auto", "cuda", "mps", "cpu", "probes"],
+        help="Target device for compute stress (default: auto)",
+    )
+    p_stress.add_argument(
+        "--matrix-size",
+        type=int,
+        default=1024,
+        help="Matrix dimension for torch compute stress (default: 1024)",
+    )
+    p_stress.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -536,6 +567,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  headroom: {result.headroom_gb} GB via {result.memory_source}")
             for note in result.notes:
                 print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "stress":
+        result = run_stress_test(
+            duration_s=args.duration,
+            mode=args.mode,
+            backend=args.backend,
+            matrix_size=args.matrix_size,
+        )
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            print(render_stress_text(result))
         return 0
 
     parser.error("Unknown command")
