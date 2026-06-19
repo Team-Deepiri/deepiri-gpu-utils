@@ -22,12 +22,15 @@ PUBLIC_MODULES = [
     "deepiri_gpu_utils.compose_gpu",
     "deepiri_gpu_utils.inventory",
     "deepiri_gpu_utils.model_fit",
+    "deepiri_gpu_utils.model_matrix",
     "deepiri_gpu_utils.ollama",
     "deepiri_gpu_utils.profiles",
     "deepiri_gpu_utils.setup",
     "deepiri_gpu_utils.summary",
     "deepiri_gpu_utils.system_info",
     "deepiri_gpu_utils.torch_device",
+    "deepiri_gpu_utils.visualize",
+    "deepiri_gpu_utils.workload",
 ]
 
 

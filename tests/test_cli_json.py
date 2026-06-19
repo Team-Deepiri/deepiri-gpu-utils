@@ -37,6 +37,9 @@ EXPECTED_COMMANDS = [
     ["profile", "--all", "--json"],
     ["profile", "--backend", "rocm", "--json"],
     ["compose-gpu", "--backend", "cuda", "--json"],
+    ["visualize", "--json"],
+    ["model-matrix", "--json"],
+    ["workload", "mistral:7b", "--json"],
 ]
 
 

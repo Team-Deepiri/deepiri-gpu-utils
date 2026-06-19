@@ -60,6 +60,9 @@ examples/gpu-install-guide.sh amd
 python examples/hardware-summary.py
 python examples/hardware-summary.py --full
 python examples/check-model-fit.py mistral:7b --json
+examples/generate-gpu-report.sh
+deepiri-gpu visualize
+deepiri-gpu model-matrix
 ```
 
 ## Ollama on Linux / WSL (NVIDIA Container Toolkit)

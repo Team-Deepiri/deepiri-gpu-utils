@@ -20,11 +20,14 @@ from deepiri_gpu_utils import (
     install_check,
     inventory,
     model_fit,
+    model_matrix,
     ollama,
     profiles,
     setup,
     summary,
     system_info,
+    visualize,
+    workload,
 )
 from deepiri_gpu_utils import torch_device as td
 
@@ -70,6 +73,8 @@ def test_ollama_public_api() -> None:
     assert callable(ollama.recommend_models)
     assert callable(ollama.setup_tier)
     assert callable(ollama.categorize_model)
+    assert callable(ollama.curated_model_ids)
+    assert callable(ollama.curated_models)
     assert _field_names(ollama.OllamaRecommendation) == [
         "default_model",
         "recommended_models",
@@ -218,5 +223,49 @@ def test_compose_gpu_public_api() -> None:
         "device_requests",
         "run_gpu_args",
         "environment",
+        "notes",
+    ]
+
+
+def test_visualize_public_api() -> None:
+    assert callable(visualize.render_dashboard)
+    assert callable(visualize.render_html_report)
+    assert _field_names(visualize.DashboardRender) == [
+        "text",
+        "backend",
+        "gpu_count",
+        "doctor_status",
+    ]
+
+
+def test_model_matrix_public_api() -> None:
+    assert callable(model_matrix.model_fit_matrix)
+    assert callable(model_matrix.render_model_matrix_text)
+    assert _field_names(model_matrix.ModelMatrix) == [
+        "setup_tier",
+        "system_ram_gb",
+        "effective_vram_gb",
+        "backend",
+        "rows",
+        "counts",
+    ]
+    assert _field_names(model_matrix.ModelMatrixRow) == [
+        "model",
+        "description",
+        "fit",
+        "suitable",
+    ]
+
+
+def test_workload_public_api() -> None:
+    assert callable(workload.estimate_workload)
+    assert _field_names(workload.WorkloadEstimate) == [
+        "model",
+        "parameters_b",
+        "estimated_memory_gb",
+        "available_memory_gb",
+        "memory_source",
+        "fits",
+        "headroom_gb",
         "notes",
     ]

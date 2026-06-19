@@ -13,11 +13,14 @@ from .export_env import build_args_shell_export
 from .install_check import install_readiness, install_readiness_all
 from .inventory import choose_suitable_gpu, gpu_inventory
 from .model_fit import model_fit_check
+from .model_matrix import model_fit_matrix, render_model_matrix_text
 from .ollama import recommend_models
 from .profiles import all_backend_profiles, backend_profile
 from .setup import DeviceArg, setup_device, setup_device_mac
 from .summary import hardware_summary
 from .torch_device import resolve_torch_device
+from .visualize import render_dashboard, render_html_report
+from .workload import estimate_workload
 
 
 def _to_jsonable(obj: Any) -> Any:
@@ -205,6 +208,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override backend (default: detect)",
     )
     p_compose.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_visualize = subparsers.add_parser(
+        "visualize",
+        help="ASCII terminal dashboard or self-contained HTML hardware report",
+    )
+    p_visualize.add_argument(
+        "--html",
+        metavar="PATH",
+        default=None,
+        help="Write HTML report to PATH instead of printing ASCII dashboard",
+    )
+    p_visualize.add_argument("--json", action="store_true", help="Emit dashboard metadata JSON")
+
+    p_matrix = subparsers.add_parser(
+        "model-matrix",
+        help="Show curated Ollama model fit matrix for this host",
+    )
+    p_matrix.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_workload = subparsers.add_parser(
+        "workload",
+        help="Estimate whether a model workload fits available memory",
+    )
+    p_workload.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
+    p_workload.add_argument(
+        "--context-tokens",
+        type=int,
+        default=4096,
+        help="Context window size for memory overhead estimate",
+    )
+    p_workload.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -435,6 +469,72 @@ def main(argv: list[str] | None = None) -> int:
             if cfg.run_gpu_args:
                 print(f"  docker run args: {' '.join(cfg.run_gpu_args)}")
             for note in cfg.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "visualize":
+        if args.html:
+            path = args.html
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(render_html_report())
+            if args.json:
+                dash = render_dashboard()
+                print(
+                    json.dumps(
+                        {
+                            "format": "html",
+                            "path": path,
+                            "backend": dash.backend,
+                            "gpu_count": dash.gpu_count,
+                            "doctor_status": dash.doctor_status,
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+            else:
+                print(f"wrote HTML report: {path}")
+            return 0
+
+        dash = render_dashboard()
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "format": "ascii",
+                        "backend": dash.backend,
+                        "gpu_count": dash.gpu_count,
+                        "doctor_status": dash.doctor_status,
+                        "text": dash.text,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(dash.text)
+        return 0
+
+    if args.cmd == "model-matrix":
+        matrix = model_fit_matrix()
+        if args.json:
+            print(json.dumps(_to_jsonable(matrix), indent=2, sort_keys=True))
+        else:
+            print(render_model_matrix_text(matrix))
+        return 0
+
+    if args.cmd == "workload":
+        result = estimate_workload(args.model, context_tokens=args.context_tokens)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            verdict = "fits" if result.fits else "does not fit"
+            print(
+                f"workload: {result.model} -> {verdict} "
+                f"({result.estimated_memory_gb} GB est / {result.available_memory_gb} GB avail)"
+            )
+            print(f"  headroom: {result.headroom_gb} GB via {result.memory_source}")
+            for note in result.notes:
                 print(f"  note: {note}")
         return 0
 

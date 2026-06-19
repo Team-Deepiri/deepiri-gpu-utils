@@ -23,6 +23,9 @@ args, readiness checks, setup runbooks, Ollama tiering, and optional PyTorch dev
 | **`install-check`** | Driver/tooling readiness for NVIDIA, AMD/ROCm, Apple/MPS, or CPU |
 | **`profile`** | Canonical install + docker profile per backend (`cuda` / `rocm` / `mps` / `cpu`) |
 | **`compose-gpu`** | Docker Compose GPU device/deploy hints for downstream repos |
+| **`visualize`** | ASCII terminal dashboard or self-contained HTML hardware report |
+| **`model-matrix`** | Curated Ollama model fit matrix for the detected host |
+| **`workload`** | Heuristic memory fit estimate for a model + context size |
 
 Optional extra: `pip install 'deepiri-gpu-utils[torch]'`.
 
@@ -48,6 +51,10 @@ deepiri-gpu install-check --device amd --json
 deepiri-gpu install-check --all --json
 deepiri-gpu profile --all --json
 deepiri-gpu compose-gpu --json
+deepiri-gpu visualize
+deepiri-gpu visualize --html gpu-report.html
+deepiri-gpu model-matrix --json
+deepiri-gpu workload mistral:7b --json
 ```
 
 ## Development
