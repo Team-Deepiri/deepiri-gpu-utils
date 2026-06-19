@@ -8,9 +8,12 @@ from typing import Any
 from .build_args import build_args_from_detection
 from .detect import detect
 from .doctor import doctor
+from .export_env import build_args_shell_export
 from .inventory import choose_suitable_gpu, gpu_inventory
+from .model_fit import model_fit_check
 from .ollama import recommend_models
 from .setup import DeviceArg, setup_device, setup_device_mac
+from .summary import hardware_summary
 from .torch_device import resolve_torch_device
 
 
@@ -123,6 +126,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional backend filter for the suitability check (cuda/rocm/mps)",
     )
     p_inventory.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_summary = subparsers.add_parser(
+        "summary",
+        help="Aggregate detect, doctor, inventory, build-args, ollama, torch-device",
+    )
+    p_summary.add_argument("--json", action="store_true", help="Emit JSON")
+
+    p_export = subparsers.add_parser(
+        "export-env",
+        help="Print shell export lines for docker build args (read-only)",
+    )
+    p_export.add_argument(
+        "--device-type",
+        default="auto",
+        choices=["auto", "gpu", "cpu", "mpsos"],
+        help="Override detection (default: auto from detect)",
+    )
+    p_export.add_argument(
+        "--prefix",
+        default="",
+        help="Optional prefix for exported variable names (e.g. CYREX_)",
+    )
+
+    p_model_fit = subparsers.add_parser(
+        "model-fit",
+        help="Check whether a specific Ollama model fits this hardware",
+    )
+    p_model_fit.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
+    p_model_fit.add_argument("--backend-hint", default=None, help="Optional backend hint")
+    p_model_fit.add_argument("--json", action="store_true", help="Emit JSON")
 
     return parser
 
@@ -248,6 +281,47 @@ def main(argv: list[str] | None = None) -> int:
                     f"Suitable for {args.min_memory_gb}GB: "
                     f"{selection.suitable} - {selection.reason}"
                 )
+        return 0
+
+    if args.cmd == "summary":
+        snap = hardware_summary()
+        if args.json:
+            payload = {
+                "detect": _to_jsonable(snap.detect),
+                "doctor": _to_jsonable(snap.doctor),
+                "inventory": _to_jsonable(snap.inventory),
+                "build_args": _to_jsonable(snap.build_args),
+                "ollama": _to_jsonable(snap.ollama),
+                "torch_device": _to_jsonable(snap.torch_device),
+                "system_ram_gb": snap.system_ram_gb,
+                "gpu_count": snap.gpu_count,
+                "total_vram_gb": snap.total_vram_gb,
+                "notes": snap.notes,
+            }
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print(
+                f"summary: backend={snap.detect.backend} doctor={snap.doctor.status} "
+                f"gpus={snap.gpu_count} torch={snap.torch_device.device}"
+            )
+            for note in snap.notes:
+                print(f"  note: {note}")
+        return 0
+
+    if args.cmd == "export-env":
+        export = build_args_shell_export(device_type=args.device_type, prefix=args.prefix)
+        print("\n".join(export.lines))
+        return 0
+
+    if args.cmd == "model-fit":
+        result = model_fit_check(args.model, backend_hint=args.backend_hint)
+        if args.json:
+            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
+        else:
+            print(f"model-fit: {result.model} -> {result.fit} (suitable={result.suitable})")
+            print(f"  {result.reason}")
+            for note in result.notes:
+                print(f"  note: {note}")
         return 0
 
     parser.error("Unknown command")

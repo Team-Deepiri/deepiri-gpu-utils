@@ -17,9 +17,12 @@ PUBLIC_MODULES = [
     "deepiri_gpu_utils.cli",
     "deepiri_gpu_utils.detect",
     "deepiri_gpu_utils.doctor",
+    "deepiri_gpu_utils.export_env",
     "deepiri_gpu_utils.inventory",
+    "deepiri_gpu_utils.model_fit",
     "deepiri_gpu_utils.ollama",
     "deepiri_gpu_utils.setup",
+    "deepiri_gpu_utils.summary",
     "deepiri_gpu_utils.system_info",
     "deepiri_gpu_utils.torch_device",
 ]

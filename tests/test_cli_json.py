@@ -26,6 +26,12 @@ EXPECTED_COMMANDS = [
     ["validate", "--json"],
     ["ollama", "recommend", "--json"],
     ["torch-device", "--policy", "auto", "--json"],
+    ["inventory", "--json"],
+    ["inventory", "--min-memory-gb", "8", "--json"],
+    ["summary", "--json"],
+    ["export-env", "--device-type", "cpu"],
+    ["export-env", "--prefix", "CYREX_"],
+    ["model-fit", "mistral:7b", "--json"],
 ]
 
 

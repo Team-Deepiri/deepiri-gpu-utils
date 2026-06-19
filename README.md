@@ -16,6 +16,10 @@ args, readiness checks, setup runbooks, Ollama tiering, and optional PyTorch dev
 | **`ollama recommend`** | Hardware tiers + `categorize_model` ported from `check-ollama-models.sh` (logic only; no Docker UI) |
 | **`torch-device`** | Uses **`torch`** when `[torch]` extra installed; otherwise heuristics from `detect()` |
 | **`validate`** | JSON bundle: detect + doctor + build-args + ollama + torch-device |
+| **`inventory`** | Read-only multi-GPU inventory + optional VRAM suitability check |
+| **`summary`** | Aggregate snapshot: detect + doctor + inventory + build-args + ollama + torch-device |
+| **`export-env`** | Shell `export` lines for docker build args (compose/CI friendly) |
+| **`model-fit`** | Check whether a specific Ollama model fits detected hardware tier |
 
 Optional extra: `pip install 'deepiri-gpu-utils[torch]'`.
 
@@ -31,6 +35,11 @@ deepiri-gpu build-args --device-type gpu
 deepiri-gpu validate --json
 deepiri-gpu ollama recommend --json
 deepiri-gpu torch-device --policy auto --json
+deepiri-gpu inventory --json
+deepiri-gpu inventory --min-memory-gb 8 --json
+deepiri-gpu summary --json
+eval "$(deepiri-gpu export-env)"
+deepiri-gpu model-fit mistral:7b --json
 ```
 
 ## Development

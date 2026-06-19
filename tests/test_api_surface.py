@@ -15,9 +15,12 @@ from deepiri_gpu_utils import (
     cli,
     detect,
     doctor,
+    export_env,
     inventory,
+    model_fit,
     ollama,
     setup,
+    summary,
     system_info,
 )
 from deepiri_gpu_utils import torch_device as td
@@ -127,4 +130,40 @@ def test_inventory_public_api() -> None:
         "reason",
         "candidates",
         "min_memory_gb",
+    ]
+
+
+def test_summary_public_api() -> None:
+    assert callable(summary.hardware_summary)
+    assert _field_names(summary.HardwareSummary) == [
+        "detect",
+        "doctor",
+        "inventory",
+        "build_args",
+        "ollama",
+        "torch_device",
+        "system_ram_gb",
+        "gpu_count",
+        "total_vram_gb",
+        "notes",
+    ]
+
+
+def test_export_env_public_api() -> None:
+    assert callable(export_env.build_args_shell_export)
+    assert _field_names(export_env.ShellExport) == ["lines", "build_args"]
+
+
+def test_model_fit_public_api() -> None:
+    assert callable(model_fit.model_fit_check)
+    assert _field_names(model_fit.ModelFitResult) == [
+        "model",
+        "fit",
+        "setup_tier",
+        "system_ram_gb",
+        "effective_vram_gb",
+        "default_model",
+        "suitable",
+        "reason",
+        "notes",
     ]
