@@ -16,6 +16,22 @@ args, readiness checks, setup runbooks, Ollama tiering, and optional PyTorch dev
 | **`ollama recommend`** | Hardware tiers + `categorize_model` ported from `check-ollama-models.sh` (logic only; no Docker UI) |
 | **`torch-device`** | Uses **`torch`** when `[torch]` extra installed; otherwise heuristics from `detect()` |
 | **`validate`** | JSON bundle: detect + doctor + build-args + ollama + torch-device |
+| **`inventory`** | Read-only multi-GPU inventory + optional VRAM suitability check |
+| **`summary`** | Aggregate snapshot: detect + doctor + inventory + build-args + ollama + torch-device |
+| **`export-env`** | Shell `export` lines for docker build args (compose/CI friendly) |
+| **`model-fit`** | Check whether a specific Ollama model fits detected hardware tier |
+| **`install-check`** | Driver/tooling readiness for NVIDIA, AMD/ROCm, Apple/MPS, or CPU |
+| **`profile`** | Canonical install + docker profile per backend (`cuda` / `rocm` / `mps` / `cpu`) |
+| **`compose-gpu`** | Docker Compose GPU device/deploy hints for downstream repos |
+| **`visualize`** | ASCII terminal dashboard or self-contained HTML hardware report |
+| **`model-matrix`** | Curated Ollama model fit matrix for the detected host |
+| **`workload`** | Heuristic memory fit estimate for a model + context size |
+| **`stress`** | Bounded GPU/CPU stress test with read-only VRAM/util telemetry |
+| **`health`** | CI health gate (exit 0=ok, 1=warn, 2=fail) |
+| **`env-hints`** | Recommended runtime env vars per backend |
+| **`capacity`** | Estimate concurrent model instances that fit in memory |
+| **`top`** | List NVIDIA GPU compute processes |
+| **`snapshot`** | Save/diff hardware snapshot JSON for CI regression |
 
 Optional extra: `pip install 'deepiri-gpu-utils[torch]'`.
 
@@ -31,3 +47,55 @@ deepiri-gpu build-args --device-type gpu
 deepiri-gpu validate --json
 deepiri-gpu ollama recommend --json
 deepiri-gpu torch-device --policy auto --json
+deepiri-gpu inventory --json
+deepiri-gpu inventory --min-memory-gb 8 --json
+deepiri-gpu summary --json
+eval "$(deepiri-gpu export-env)"
+deepiri-gpu model-fit mistral:7b --json
+deepiri-gpu install-check --json
+deepiri-gpu install-check --device amd --json
+deepiri-gpu install-check --all --json
+deepiri-gpu profile --all --json
+deepiri-gpu compose-gpu --json
+deepiri-gpu visualize
+deepiri-gpu visualize --html gpu-report.html
+deepiri-gpu model-matrix --json
+deepiri-gpu workload mistral:7b --json
+deepiri-gpu stress --duration 5 --json
+deepiri-gpu stress --mode probes --duration 2 --json
+deepiri-gpu health --json
+deepiri-gpu env-hints --json
+deepiri-gpu capacity mistral:7b --json
+deepiri-gpu top --json
+deepiri-gpu snapshot save baseline.json
+deepiri-gpu snapshot diff baseline.json current.json
+```
+
+## Development
+
+Requires Python >= 3.11. No runtime dependencies; `torch` is an optional extra.
+
+```bash
+# Create / activate a virtual environment (example)
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+
+# Install the package with dev tooling (pytest + ruff)
+pip install -e ".[dev]"
+
+# Optionally include the PyTorch extra for torch-device tests
+pip install -e ".[dev,torch]"
+
+# Run the test suite (CPU-only; no GPU required)
+pytest
+
+# Lint
+ruff check .
+
+# Byte-compile check
+python -m compileall src tests
+```
+
+The test suite mocks all external probes (`nvidia-smi`, `rocm-smi`, `lspci`,
+`dmidecode`, `sysctl`, Docker, and `torch`), so it runs deterministically on a
+CPU-only machine without GPU hardware.
