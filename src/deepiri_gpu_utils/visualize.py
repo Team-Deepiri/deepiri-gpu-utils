@@ -15,12 +15,6 @@ from .inventory import GPUInfo
 from .summary import HardwareSummary, hardware_summary
 
 _BAR_WIDTH = 24
-_FIT_SYMBOLS = {
-    "recommended": "++",
-    "usable": "+ ",
-    "marginal": "~ ",
-    "no": "x ",
-}
 
 
 @dataclass(frozen=True)
@@ -78,7 +72,6 @@ def render_dashboard(*, snap: HardwareSummary | None = None) -> DashboardRender:
 
     s = snap or hardware_summary()
     d = s.detect
-    ollama = s.ollama
     width = 62
     border = "=" * width
 
@@ -92,7 +85,6 @@ def render_dashboard(*, snap: HardwareSummary | None = None) -> DashboardRender:
         f" RAM      : {s.system_ram_gb} GB",
         f" VRAM tot : {s.total_vram_gb if s.total_vram_gb is not None else '?'} GB",
         f" GPUs     : {s.gpu_count}",
-        f" ollama   : tier={ollama.setup_tier} default={ollama.default_model}",
         f" docker   : {s.build_args.device_type} / {s.build_args.base_image}",
         _install_status_line(d.backend),
         "",
@@ -102,25 +94,6 @@ def render_dashboard(*, snap: HardwareSummary | None = None) -> DashboardRender:
         lines.extend(_gpu_vram_bars(s.inventory.gpus))
     else:
         lines.append("  (no GPUs inventoried — CPU-only or drivers missing)")
-
-    lines.append("")
-    lines.append(" model fit (curated subset)")
-    sample = (
-        ollama.recommended_models[:4]
-        + ollama.usable_models[:2]
-        + ollama.marginal_models[:2]
-        + ollama.unsuitable_models[:2]
-    )
-    for model in sample[:10]:
-        if model in ollama.recommended_models:
-            fit = "recommended"
-        elif model in ollama.usable_models:
-            fit = "usable"
-        elif model in ollama.marginal_models:
-            fit = "marginal"
-        else:
-            fit = "no"
-        lines.append(f"  [{_FIT_SYMBOLS[fit]}] {model}")
 
     if s.doctor.runbook:
         lines.append("")
@@ -148,7 +121,6 @@ def render_html_report(*, snap: HardwareSummary | None = None) -> str:
     s = snap or hardware_summary()
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     d = s.detect
-    ollama = s.ollama
 
     def esc(value: object) -> str:
         return html.escape(str(value))
@@ -169,16 +141,6 @@ def render_html_report(*, snap: HardwareSummary | None = None) -> str:
         )
     if not gpu_rows:
         gpu_rows = '<tr><td colspan="7">No GPUs detected</td></tr>'
-
-    model_rows = ""
-    for model in ollama.recommended_models[:12]:
-        model_rows += f"<tr class='ok'><td>{esc(model)}</td><td>recommended</td></tr>"
-    for model in ollama.usable_models[:8]:
-        model_rows += f"<tr class='warn'><td>{esc(model)}</td><td>usable</td></tr>"
-    for model in ollama.marginal_models[:6]:
-        model_rows += f"<tr class='marginal'><td>{esc(model)}</td><td>marginal</td></tr>"
-    for model in ollama.unsuitable_models[:6]:
-        model_rows += f"<tr class='bad'><td>{esc(model)}</td><td>no</td></tr>"
 
     runbook_items = "".join(f"<li>{esc(line)}</li>" for line in s.doctor.runbook[:8])
     note_items = "".join(f"<li>{esc(line)}</li>" for line in s.notes)
@@ -209,10 +171,6 @@ def render_html_report(*, snap: HardwareSummary | None = None) -> str:
     }}
     table {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }}
     th, td {{ border: 1px solid #30363d; padding: 0.5rem; text-align: left; }}
-    tr.ok td:last-child {{ color: #3fb950; }}
-    tr.warn td:last-child {{ color: #d29922; }}
-    tr.marginal td:last-child {{ color: #f0883e; }}
-    tr.bad td:last-child {{ color: #f85149; }}
     .meta {{ color: #8b949e; font-size: 0.9rem; }}
   </style>
 </head>
@@ -225,8 +183,6 @@ def render_html_report(*, snap: HardwareSummary | None = None) -> str:
     <div class="card"><strong>GPUs</strong><br>{esc(s.gpu_count)}</div>
     <div class="card"><strong>RAM</strong><br>{esc(s.system_ram_gb)} GB</div>
     <div class="card"><strong>VRAM total</strong><br>{esc(s.total_vram_gb)} GB</div>
-    <div class="card"><strong>Ollama tier</strong><br>{esc(ollama.setup_tier)}</div>
-    <div class="card"><strong>Default model</strong><br>{esc(ollama.default_model)}</div>
     <div class="card"><strong>Torch device</strong><br>{esc(s.torch_device.device)}</div>
   </div>
   <h2>GPU inventory</h2>
@@ -234,11 +190,6 @@ def render_html_report(*, snap: HardwareSummary | None = None) -> str:
     <tr><th>Index</th><th>Backend</th><th>Name</th><th>VRAM GB</th><th>Free GB</th>
         <th>Util %</th><th>Driver</th></tr>
     {gpu_rows}
-  </table>
-  <h2>Ollama model fit</h2>
-  <table>
-    <tr><th>Model</th><th>Fit</th></tr>
-    {model_rows}
   </table>
   <h2>Runbook</h2>
   <ul>{runbook_items or '<li>None</li>'}</ul>

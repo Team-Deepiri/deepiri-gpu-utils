@@ -1,9 +1,4 @@
-"""CLI parser smoke tests and JSON-shape regression tests.
-
-JSON keys are part of the public contract (other Deepiri tooling may parse
-them), so the exact key sets are locked here. ``force_cpu`` keeps output
-deterministic on any host.
-"""
+"""CLI parser smoke tests and JSON-shape regression tests."""
 
 from __future__ import annotations
 
@@ -24,26 +19,21 @@ EXPECTED_COMMANDS = [
     ["build-args", "--device-type", "gpu"],
     ["build-args", "--base-image-only"],
     ["validate", "--json"],
-    ["ollama", "recommend", "--json"],
     ["torch-device", "--policy", "auto", "--json"],
     ["inventory", "--json"],
     ["inventory", "--min-memory-gb", "8", "--json"],
     ["summary", "--json"],
     ["export-env", "--device-type", "cpu"],
     ["export-env", "--prefix", "CYREX_"],
-    ["model-fit", "mistral:7b", "--json"],
     ["install-check", "--device", "cpu", "--json"],
     ["install-check", "--all", "--json"],
     ["profile", "--all", "--json"],
     ["profile", "--backend", "rocm", "--json"],
     ["compose-gpu", "--backend", "cuda", "--json"],
     ["visualize", "--json"],
-    ["model-matrix", "--json"],
-    ["workload", "mistral:7b", "--json"],
     ["stress", "--mode", "probes", "--duration", "0.5", "--json"],
     ["health", "--json"],
     ["env-hints", "--backend", "cpu", "--json"],
-    ["capacity", "mistral:7b", "--json"],
     ["top", "--json"],
     ["snapshot", "save", "/tmp/deepiri-gpu-test-snapshot.json", "--json"],
 ]
@@ -65,7 +55,6 @@ def test_parser_requires_a_subcommand() -> None:
         ["setup", "--device", "bogus"],
         ["build-args", "--device-type", "bogus"],
         ["torch-device", "--policy", "bogus"],
-        ["ollama"],  # nested subcommand is required
         ["totally-unknown"],
     ],
 )
@@ -114,26 +103,8 @@ def test_build_args_json_shape(force_cpu, capsys) -> None:
 
 def test_validate_json_shape(force_cpu, capsys) -> None:
     payload = _json_out(capsys, ["validate", "--json"])
-    assert set(payload) == {"detect", "doctor", "build_args", "ollama", "torch_device"}
+    assert set(payload) == {"detect", "doctor", "build_args", "torch_device"}
     assert payload["detect"]["backend"] == "cpu"
-
-
-def test_ollama_json_shape(force_cpu, capsys) -> None:
-    payload = _json_out(capsys, ["ollama", "recommend", "--json"])
-    assert set(payload) == {
-        "default_model",
-        "recommended_models",
-        "usable_models",
-        "marginal_models",
-        "unsuitable_models",
-        "notes",
-        "setup_tier",
-        "system_ram_gb",
-        "effective_vram_gb",
-        "category",
-    }
-    assert payload["category"] == "hardware_tiered"
-    assert payload["default_model"]
 
 
 def test_torch_device_json_shape(force_cpu, capsys) -> None:

@@ -15,19 +15,16 @@ PUBLIC_MODULES = [
     "deepiri_gpu_utils._version",
     "deepiri_gpu_utils.build_args",
     "deepiri_gpu_utils.cli",
+    "deepiri_gpu_utils.compose_gpu",
     "deepiri_gpu_utils.detect",
     "deepiri_gpu_utils.doctor",
     "deepiri_gpu_utils.env_hints",
     "deepiri_gpu_utils.export_env",
     "deepiri_gpu_utils.gpu_top",
+    "deepiri_gpu_utils.hardware",
     "deepiri_gpu_utils.health",
     "deepiri_gpu_utils.install_check",
-    "deepiri_gpu_utils.compose_gpu",
-    "deepiri_gpu_utils.capacity",
     "deepiri_gpu_utils.inventory",
-    "deepiri_gpu_utils.model_fit",
-    "deepiri_gpu_utils.model_matrix",
-    "deepiri_gpu_utils.ollama",
     "deepiri_gpu_utils.profiles",
     "deepiri_gpu_utils.setup",
     "deepiri_gpu_utils.snapshot",
@@ -36,7 +33,6 @@ PUBLIC_MODULES = [
     "deepiri_gpu_utils.system_info",
     "deepiri_gpu_utils.torch_device",
     "deepiri_gpu_utils.visualize",
-    "deepiri_gpu_utils.workload",
 ]
 
 
@@ -52,5 +48,4 @@ def test_version_is_exposed_and_consistent() -> None:
     assert isinstance(deepiri_gpu_utils.__version__, str)
     assert deepiri_gpu_utils.__version__
     assert deepiri_gpu_utils.__version__ == _version.__version__
-    # version is a simple dotted string (does not over-constrain the exact value)
     assert all(part != "" for part in deepiri_gpu_utils.__version__.split("."))
