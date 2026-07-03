@@ -13,7 +13,6 @@ from .build_args import build_args_from_detection
 from .detect import DetectResult, detect
 from .doctor import DoctorReport, doctor
 from .inventory import GPUInventoryResult, gpu_inventory
-from .ollama import OllamaRecommendation, recommend_models
 from .system_info import system_ram_gb
 from .torch_device import DeviceDecision, resolve_torch_device
 
@@ -26,7 +25,6 @@ class HardwareSummary:
     doctor: DoctorReport
     inventory: GPUInventoryResult
     build_args: Any
-    ollama: OllamaRecommendation
     torch_device: DeviceDecision
     system_ram_gb: int = 0
     gpu_count: int = 0
@@ -48,7 +46,6 @@ def hardware_summary() -> HardwareSummary:
     rep = doctor()
     inv = gpu_inventory()
     ba = build_args_from_detection(device_type="auto", detect_result=d)
-    ollama_rec = recommend_models()
     torch_dec = resolve_torch_device("auto")
     ram = system_ram_gb()
 
@@ -63,7 +60,6 @@ def hardware_summary() -> HardwareSummary:
         doctor=rep,
         inventory=inv,
         build_args=ba,
-        ollama=ollama_rec,
         torch_device=torch_dec,
         system_ram_gb=ram,
         gpu_count=len(inv.gpus),

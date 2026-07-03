@@ -35,7 +35,7 @@ def test_render_html_report_contains_sections(force_cpu, monkeypatch) -> None:
     html = render_html_report(snap=hardware_summary())
     assert "<title>deepiri-gpu report</title>" in html
     assert "GPU inventory" in html
-    assert "Ollama model fit" in html
+    assert "Runbook" in html
 
 
 def test_visualize_cli_ascii(force_cpu, monkeypatch, capsys) -> None:

@@ -27,9 +27,6 @@ class TestCliStub(unittest.TestCase):
         parser.parse_args(["torch-device", "--json"])
         parser.parse_args(["torch-device", "--policy", "cpu", "--json"])
 
-        # nested subcommand
-        parser.parse_args(["ollama", "recommend", "--json"])
-
     def test_main_detect_returns_zero(self) -> None:
         rc = main(["detect", "--json"])
         self.assertEqual(rc, 0)

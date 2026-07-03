@@ -38,7 +38,6 @@ def test_summary_json_cli_shape(force_cpu, monkeypatch, capsys) -> None:
         "doctor",
         "inventory",
         "build_args",
-        "ollama",
         "torch_device",
         "system_ram_gb",
         "gpu_count",
