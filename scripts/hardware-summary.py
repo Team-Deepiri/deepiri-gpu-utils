@@ -28,7 +28,6 @@ def main() -> int:
         "gpu_count": snap.gpu_count,
         "total_vram_gb": snap.total_vram_gb,
         "system_ram_gb": snap.system_ram_gb,
-        "default_ollama_model": snap.ollama.default_model,
         "torch_device": snap.torch_device.device,
         "base_image": snap.build_args.base_image,
         "device_type": snap.build_args.device_type,

@@ -25,7 +25,7 @@ payload = json.loads(sys.argv[1])
 strict = int(sys.argv[2])
 
 required = {
-    "detect", "doctor", "inventory", "build_args", "ollama",
+    "detect", "doctor", "inventory", "build_args",
     "torch_device", "system_ram_gb", "gpu_count", "total_vram_gb", "notes",
 }
 missing = required - set(payload)

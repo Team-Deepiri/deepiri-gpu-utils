@@ -40,7 +40,6 @@ def capture_snapshot() -> dict[str, Any]:
             "doctor": _jsonable(snap.doctor),
             "inventory": _jsonable(snap.inventory),
             "build_args": _jsonable(snap.build_args),
-            "ollama": _jsonable(snap.ollama),
             "torch_device": _jsonable(snap.torch_device),
             "system_ram_gb": snap.system_ram_gb,
             "gpu_count": snap.gpu_count,
@@ -69,16 +68,13 @@ def _flatten_summary(payload: dict[str, Any]) -> dict[str, Any]:
     flat: dict[str, Any] = {}
     if isinstance(summary, dict):
         for key, value in summary.items():
-            if key in ("detect", "doctor", "inventory", "build_args", "ollama", "torch_device"):
+            if key in ("detect", "doctor", "inventory", "build_args", "torch_device"):
                 if isinstance(value, dict) and "backend" in value:
                     flat[f"{key}.backend"] = value.get("backend")
                 if key == "detect" and isinstance(value, dict):
                     flat["detect.confidence"] = value.get("confidence")
                 if key == "doctor" and isinstance(value, dict):
                     flat["doctor.status"] = value.get("status")
-                if key == "ollama" and isinstance(value, dict):
-                    flat["ollama.setup_tier"] = value.get("setup_tier")
-                    flat["ollama.default_model"] = value.get("default_model")
                 if key == "torch_device" and isinstance(value, dict):
                     flat["torch_device.device"] = value.get("device")
             else:

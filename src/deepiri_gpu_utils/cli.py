@@ -6,7 +6,6 @@ from dataclasses import asdict, is_dataclass
 from typing import Any
 
 from .build_args import build_args_from_detection
-from .capacity import model_capacity
 from .compose_gpu import compose_gpu_config
 from .detect import detect
 from .doctor import doctor
@@ -16,9 +15,6 @@ from .gpu_top import gpu_top
 from .health import health_check
 from .install_check import install_readiness, install_readiness_all
 from .inventory import choose_suitable_gpu, gpu_inventory
-from .model_fit import model_fit_check
-from .model_matrix import model_fit_matrix, render_model_matrix_text
-from .ollama import recommend_models
 from .profiles import all_backend_profiles, backend_profile
 from .setup import DeviceArg, setup_device, setup_device_mac
 from .snapshot import (
@@ -31,7 +27,6 @@ from .stress_test import render_stress_text, run_stress_test
 from .summary import hardware_summary
 from .torch_device import resolve_torch_device
 from .visualize import render_dashboard, render_html_report
-from .workload import estimate_workload
 
 
 def _to_jsonable(obj: Any) -> Any:
@@ -105,15 +100,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_validate = subparsers.add_parser(
         "validate",
-        help="Aggregate detect, doctor, build-args, ollama, torch-device",
+        help="Aggregate detect, doctor, build-args, torch-device",
     )
     p_validate.add_argument("--json", action="store_true", help="Emit JSON")
-
-    p_ollama = subparsers.add_parser("ollama", help="Ollama related helpers")
-    ollama_sub = p_ollama.add_subparsers(dest="ollama_cmd", required=True)
-    p_rec = ollama_sub.add_parser("recommend", help="Recommend Ollama model(s) by hardware tier")
-    p_rec.add_argument("--backend-hint", default=None, help="Optional backend hint (cpu/mps/cuda)")
-    p_rec.add_argument("--json", action="store_true", help="Emit JSON")
 
     p_torch = subparsers.add_parser(
         "torch-device",
@@ -146,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_summary = subparsers.add_parser(
         "summary",
-        help="Aggregate detect, doctor, inventory, build-args, ollama, torch-device",
+        help="Aggregate detect, doctor, inventory, build-args, torch-device",
     )
     p_summary.add_argument("--json", action="store_true", help="Emit JSON")
 
@@ -165,14 +154,6 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional prefix for exported variable names (e.g. CYREX_)",
     )
-
-    p_model_fit = subparsers.add_parser(
-        "model-fit",
-        help="Check whether a specific Ollama model fits this hardware",
-    )
-    p_model_fit.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
-    p_model_fit.add_argument("--backend-hint", default=None, help="Optional backend hint")
-    p_model_fit.add_argument("--json", action="store_true", help="Emit JSON")
 
     p_install = subparsers.add_parser(
         "install-check",
@@ -232,25 +213,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_visualize.add_argument("--json", action="store_true", help="Emit dashboard metadata JSON")
 
-    p_matrix = subparsers.add_parser(
-        "model-matrix",
-        help="Show curated Ollama model fit matrix for this host",
-    )
-    p_matrix.add_argument("--json", action="store_true", help="Emit JSON")
-
-    p_workload = subparsers.add_parser(
-        "workload",
-        help="Estimate whether a model workload fits available memory",
-    )
-    p_workload.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
-    p_workload.add_argument(
-        "--context-tokens",
-        type=int,
-        default=4096,
-        help="Context window size for memory overhead estimate",
-    )
-    p_workload.add_argument("--json", action="store_true", help="Emit JSON")
-
     p_stress = subparsers.add_parser(
         "stress",
         help="Bounded GPU/CPU stress test with read-only telemetry sampling",
@@ -298,19 +260,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override backend (default: detect)",
     )
     p_env.add_argument("--json", action="store_true", help="Emit JSON")
-
-    p_capacity = subparsers.add_parser(
-        "capacity",
-        help="Estimate how many concurrent model instances fit available memory",
-    )
-    p_capacity.add_argument("model", help="Ollama model id (e.g. mistral:7b)")
-    p_capacity.add_argument(
-        "--reserved-gb",
-        type=float,
-        default=1.0,
-        help="GB to reserve for OS/runtime (default: 1.0)",
-    )
-    p_capacity.add_argument("--json", action="store_true", help="Emit JSON")
 
     p_top = subparsers.add_parser(
         "top",
@@ -393,31 +342,17 @@ def main(argv: list[str] | None = None) -> int:
         d = detect()
         rep = doctor()
         ba = build_args_from_detection(device_type="auto")
-        ollama_rec = recommend_models()
         torch_dec = resolve_torch_device("auto")
         payload = {
             "detect": _to_jsonable(d),
             "doctor": _to_jsonable(rep),
             "build_args": _to_jsonable(ba),
-            "ollama": _to_jsonable(ollama_rec),
             "torch_device": _to_jsonable(torch_dec),
         }
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
             print(f"validate: detect={d.backend} doctor={rep.status} torch={torch_dec.device}")
-        return 0
-
-    if args.cmd == "ollama":
-        rec = recommend_models(backend_hint=args.backend_hint)
-        if args.json:
-            print(json.dumps(_to_jsonable(rec), indent=2, sort_keys=True))
-        else:
-            print(f"Default model: {rec.default_model} (setup_tier={rec.setup_tier})")
-            if rec.recommended_models:
-                print("Recommended:", ", ".join(rec.recommended_models[:8]))
-            if rec.usable_models:
-                print("Usable:", ", ".join(rec.usable_models[:8]))
         return 0
 
     if args.cmd == "torch-device":
@@ -465,7 +400,6 @@ def main(argv: list[str] | None = None) -> int:
                 "doctor": _to_jsonable(snap.doctor),
                 "inventory": _to_jsonable(snap.inventory),
                 "build_args": _to_jsonable(snap.build_args),
-                "ollama": _to_jsonable(snap.ollama),
                 "torch_device": _to_jsonable(snap.torch_device),
                 "system_ram_gb": snap.system_ram_gb,
                 "gpu_count": snap.gpu_count,
@@ -485,17 +419,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "export-env":
         export = build_args_shell_export(device_type=args.device_type, prefix=args.prefix)
         print("\n".join(export.lines))
-        return 0
-
-    if args.cmd == "model-fit":
-        result = model_fit_check(args.model, backend_hint=args.backend_hint)
-        if args.json:
-            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
-        else:
-            print(f"model-fit: {result.model} -> {result.fit} (suitable={result.suitable})")
-            print(f"  {result.reason}")
-            for note in result.notes:
-                print(f"  note: {note}")
         return 0
 
     if args.cmd == "install-check":
@@ -606,29 +529,6 @@ def main(argv: list[str] | None = None) -> int:
             print(dash.text)
         return 0
 
-    if args.cmd == "model-matrix":
-        matrix = model_fit_matrix()
-        if args.json:
-            print(json.dumps(_to_jsonable(matrix), indent=2, sort_keys=True))
-        else:
-            print(render_model_matrix_text(matrix))
-        return 0
-
-    if args.cmd == "workload":
-        result = estimate_workload(args.model, context_tokens=args.context_tokens)
-        if args.json:
-            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
-        else:
-            verdict = "fits" if result.fits else "does not fit"
-            print(
-                f"workload: {result.model} -> {verdict} "
-                f"({result.estimated_memory_gb} GB est / {result.available_memory_gb} GB avail)"
-            )
-            print(f"  headroom: {result.headroom_gb} GB via {result.memory_source}")
-            for note in result.notes:
-                print(f"  note: {note}")
-        return 0
-
     if args.cmd == "stress":
         result = run_stress_test(
             duration_s=args.duration,
@@ -660,17 +560,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"env-hints: backend={hints.backend}")
             for hint in hints.hints:
                 print(f"  {hint.key}={hint.value!r}  # {hint.reason}")
-        return 0
-
-    if args.cmd == "capacity":
-        result = model_capacity(args.model, reserved_gb=args.reserved_gb)
-        if args.json:
-            print(json.dumps(_to_jsonable(result), indent=2, sort_keys=True))
-        else:
-            print(
-                f"capacity: {result.model} -> {result.max_instances} instance(s) "
-                f"({result.per_instance_gb} GB each, {result.available_gb} GB avail)"
-            )
         return 0
 
     if args.cmd == "top":
