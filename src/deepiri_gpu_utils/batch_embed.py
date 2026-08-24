@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from deepiri_gpu_utils.detect import detect
+from deepiri_gpu_utils.hardware import effective_vram_gb
 from deepiri_gpu_utils.torch_device import resolve_torch_device
 
 
@@ -25,6 +26,7 @@ def recommend_embed_batch(
     dim: int = 384,
     min_batch: int = 8,
     max_batch: int = 128,
+    ram_gb: int = 16,
 ) -> BatchEmbedPolicy:
     """Derive batch size from GPU memory when available."""
     decision = resolve_torch_device(policy)
@@ -33,14 +35,7 @@ def recommend_embed_batch(
     max_seq = 512
 
     d = detect()
-    vram_gb = None
-    if isinstance(d.details, dict):
-        vram_gb = d.details.get("memory_total_gb") or d.details.get("vram_gb")
-        gpus = d.details.get("gpus")
-        if vram_gb is None and isinstance(gpus, list) and gpus:
-            first = gpus[0]
-            if isinstance(first, dict):
-                vram_gb = first.get("memory_total_gb") or first.get("memory_gb")
+    vram_gb = effective_vram_gb(d, ram_gb=ram_gb)
 
     if decision.device.startswith("cuda") and vram_gb:
         # ~2MB per (batch * seq * dim) float32 rough heuristic for MiniLM-class
