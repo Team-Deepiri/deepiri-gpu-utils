@@ -12,9 +12,27 @@ def effective_vram_gb(detect_result: DetectResult, ram_gb: int) -> int:
         return ram_gb
     if detect_result.backend != "cuda":
         return 0
-    nvidia = detect_result.details.get("nvidia")
+    details = detect_result.details if isinstance(detect_result.details, dict) else {}
+    nvidia = details.get("nvidia")
     if isinstance(nvidia, dict) and "memory_gb" in nvidia:
         return int(nvidia["memory_gb"])
+    for key in ("memory_total_gb", "vram_gb", "memory_gb"):
+        val = details.get(key)
+        if val is not None:
+            try:
+                return int(float(val))
+            except (TypeError, ValueError):
+                pass
+    gpus = details.get("gpus")
+    if isinstance(gpus, list) and gpus and isinstance(gpus[0], dict):
+        first = gpus[0]
+        for key in ("memory_total_gb", "memory_gb", "vram_gb"):
+            val = first.get(key)
+            if val is not None:
+                try:
+                    return int(float(val))
+                except (TypeError, ValueError):
+                    pass
     return 0
 
 
