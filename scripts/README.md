@@ -42,6 +42,42 @@ scripts/ci-preflight.sh
 scripts/ci-preflight.sh --strict   # fail when detect≠cpu but inventory is empty
 ```
 
+### Health gate and hardware baselines
+
+`health` has intentional tri-state exits: `0=ok`, `1=warn`, and `2=fail`.
+The CI wrapper always writes the JSON report. Warnings are visible but do not
+block by default, which keeps ordinary CPU-only GitHub runners viable; hard
+failures still block. GPU-required jobs can set
+`DEEPIRI_GPU_FAIL_ON_WARNING=true`.
+
+```bash
+scripts/ci-health-gate.sh gpu-health.json
+DEEPIRI_GPU_FAIL_ON_WARNING=true scripts/ci-health-gate.sh gpu-health.json
+```
+
+Upload `gpu-health.json` with the CI provider's artifact mechanism using an
+`always()` condition so a failed gate does not discard diagnostics.
+
+Hardware snapshots describe the runner, so do not create or commit them from
+ordinary pull-request runners. Snapshot capture is a no-op until a real
+baseline/release/nightly job explicitly enables it:
+
+```bash
+DEEPIRI_GPU_SNAPSHOT_ENABLED=true \
+  DEEPIRI_GPU_SNAPSHOT_PATH=gpu-snapshot.json \
+  scripts/save-snapshot.sh
+```
+
+Diffing runs only when `DEEPIRI_GPU_SNAPSHOT_BASELINE` names an existing
+baseline file. The JSON diff defaults to `gpu-snapshot-diff.json` and can be
+changed with `DEEPIRI_GPU_SNAPSHOT_DIFF_REPORT`.
+
+```bash
+DEEPIRI_GPU_SNAPSHOT_ENABLED=true \
+  DEEPIRI_GPU_SNAPSHOT_BASELINE=approved-baseline.json \
+  scripts/save-snapshot.sh candidate.json
+```
+
 ## GPU install guides (all backends)
 
 NVIDIA (CUDA), AMD (ROCm), Apple (MPS), and CPU-only each have a canonical
