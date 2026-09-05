@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "deepiri-gpu-utils"
-version = "0.2.1"
-description = "Deepiri Hybrid LLM Build & Dev Toolkit (GPU detection, setup, and device helpers)"
+version = "0.3.0"
+description = "Reusable GPU detection, inventory, health, selection, and runtime primitives"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = []
 
