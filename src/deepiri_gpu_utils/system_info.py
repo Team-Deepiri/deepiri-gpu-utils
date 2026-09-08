@@ -99,12 +99,24 @@ def nvidia_container_toolkit_hint() -> dict[str, Any]:
     return out
 
 
+def _is_effective_root() -> bool:
+    """Return whether the process has an effective root identity.
+
+    ``os.geteuid`` is a POSIX API and is absent on Windows.  Keeping the
+    platform-specific lookup here lets callers and tests remain portable while
+    preserving the real effective-user check on Linux.
+    """
+
+    get_euid = getattr(os, "geteuid", None)
+    return callable(get_euid) and get_euid() == 0
+
+
 def dmidecode_inventory() -> dict[str, Any]:
     """Best-effort SMBIOS/DMI strings (Linux, usually requires root)."""
 
     if platform.system() != "Linux" or not shutil.which("dmidecode"):
         return {"available": False, "reason": "dmidecode not installed or not Linux"}
-    if os.geteuid() != 0:
+    if not _is_effective_root():
         return {"available": False, "reason": "dmidecode typically requires root"}
 
     fields = (

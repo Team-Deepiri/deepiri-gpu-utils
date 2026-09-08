@@ -4,10 +4,43 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _usable_bash() -> bool:
+    """Return whether ``bash`` resolves to a working POSIX shell.
+
+    On Windows, ``bash.exe`` may be a WSL launcher even when no Linux
+    distribution (and therefore no ``/bin/bash``) is installed.  Executing a
+    tiny shell command catches that case without skipping working Git Bash,
+    Linux, or macOS environments.
+    """
+
+    bash = shutil.which("bash")
+    if bash is None:
+        return False
+    try:
+        result = subprocess.run(
+            [bash, "-c", "exit 0"],
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+pytestmark = pytest.mark.skipif(
+    os.name == "nt" and not _usable_bash(),
+    reason="POSIX shell integration tests require a usable bash executable on Windows",
+)
 
 
 def _fake_cli(tmp_path: Path) -> tuple[Path, Path]:
