@@ -25,19 +25,23 @@ def resolve_torch_device(policy: DevicePolicy = "auto") -> DeviceDecision:
 
     if policy == "cpu":
         try:
-            import torch as torch_mod
-        except ImportError:
+            import torch as torch_mod  # noqa: F401
+        except Exception as exc:
+            note = (
+                "policy=cpu; torch not installed"
+                if isinstance(exc, ImportError)
+                else f"policy=cpu; torch unavailable ({type(exc).__name__})"
+            )
             return DeviceDecision(
                 device="cpu",
-                notes=["policy=cpu; torch not installed"],
+                notes=[note],
                 torch_available=False,
             )
-        _ = torch_mod.__version__
         return DeviceDecision(device="cpu", notes=["policy=cpu"], torch_available=True)
 
     try:
         import torch
-    except ImportError:
+    except Exception as exc:
         d = detect()
         guess = "cpu"
         if policy in ("cuda", "rocm") and d.backend in ("cuda", "rocm"):
@@ -51,10 +55,16 @@ def resolve_torch_device(policy: DevicePolicy = "auto") -> DeviceDecision:
                 guess = "mps"
             elif d.backend == "rocm":
                 guess = "cuda"
-        notes.append(
-            "torch not installed; heuristic from detect() and policy. "
-            "Install: pip install 'deepiri-gpu-utils[torch]'"
-        )
+        if isinstance(exc, ImportError):
+            notes.append(
+                "torch not installed; heuristic from detect() and policy. "
+                "Install: pip install 'deepiri-gpu-utils[torch]'"
+            )
+        else:
+            notes.append(
+                f"torch unavailable ({type(exc).__name__}); heuristic from detect() and policy. "
+                "Install: pip install 'deepiri-gpu-utils[torch]'"
+            )
         return DeviceDecision(device=guess, notes=notes, torch_available=False)
 
     d = detect()
@@ -63,49 +73,58 @@ def resolve_torch_device(policy: DevicePolicy = "auto") -> DeviceDecision:
     if policy == "cpu":
         return DeviceDecision(device="cpu", notes=notes + ["policy=cpu"], torch_available=True)
 
-    if policy == "cuda":
-        if torch.cuda.is_available():
+    try:
+        if policy == "cuda":
+            if torch.cuda.is_available():
+                return DeviceDecision(
+                    device="cuda",
+                    notes=notes + ["policy=cuda, torch.cuda.is_available()=True"],
+                    torch_available=True,
+                )
             return DeviceDecision(
-                device="cuda",
-                notes=notes + ["policy=cuda, torch.cuda.is_available()=True"],
+                device="cpu",
+                notes=notes + ["policy=cuda but CUDA not available in torch; falling back to cpu"],
                 torch_available=True,
             )
-        return DeviceDecision(
-            device="cpu",
-            notes=notes + ["policy=cuda but CUDA not available in torch; falling back to cpu"],
-            torch_available=True,
-        )
 
-    if policy == "mps":
-        if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-            return DeviceDecision(device="mps", notes=notes + ["policy=mps"], torch_available=True)
-        return DeviceDecision(
-            device="cpu",
-            notes=notes + ["policy=mps but MPS not available; cpu"],
-            torch_available=True,
-        )
-
-    if policy == "rocm":
-        if torch.cuda.is_available():
+        if policy == "mps":
+            if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+                return DeviceDecision(
+                    device="mps", notes=notes + ["policy=mps"], torch_available=True
+                )
             return DeviceDecision(
-                device="cuda",
-                notes=notes + ["policy=rocm mapped to torch cuda device"],
+                device="cpu",
+                notes=notes + ["policy=mps but MPS not available; cpu"],
                 torch_available=True,
             )
+
+        if policy == "rocm":
+            if torch.cuda.is_available():
+                return DeviceDecision(
+                    device="cuda",
+                    notes=notes + ["policy=rocm mapped to torch cuda device"],
+                    torch_available=True,
+                )
+            return DeviceDecision(
+                device="cpu",
+                notes=notes + ["policy=rocm but no torch CUDA; cpu"],
+                torch_available=True,
+            )
+
+        # auto
+        mps_mod = getattr(torch.backends, "mps", None)
+        if d.backend == "mps" and mps_mod and torch.backends.mps.is_available():
+            return DeviceDecision(device="mps", notes=notes + ["auto: MPS"], torch_available=True)
+        if d.backend in ("cuda", "rocm") and torch.cuda.is_available():
+            return DeviceDecision(
+                device="cuda",
+                notes=notes + ["auto: CUDA/ROCm via torch.cuda"],
+                torch_available=True,
+            )
+    except Exception as exc:
         return DeviceDecision(
             device="cpu",
-            notes=notes + ["policy=rocm but no torch CUDA; cpu"],
-            torch_available=True,
-        )
-
-    # auto
-    mps_mod = getattr(torch.backends, "mps", None)
-    if d.backend == "mps" and mps_mod and torch.backends.mps.is_available():
-        return DeviceDecision(device="mps", notes=notes + ["auto: MPS"], torch_available=True)
-    if d.backend in ("cuda", "rocm") and torch.cuda.is_available():
-        return DeviceDecision(
-            device="cuda",
-            notes=notes + ["auto: CUDA/ROCm via torch.cuda"],
+            notes=notes + [f"torch runtime probe failed ({type(exc).__name__}); cpu fallback"],
             torch_available=True,
         )
     return DeviceDecision(device="cpu", notes=notes + ["auto: cpu fallback"], torch_available=True)

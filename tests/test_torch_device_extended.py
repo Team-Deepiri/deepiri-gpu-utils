@@ -27,6 +27,7 @@ def test_absent_cpu_policy() -> None:
     assert d.device == "cpu"
     assert d.torch_available is False
     assert any("torch not installed" in n for n in d.notes)
+    assert d.notes == ["policy=cpu; torch not installed"]
 
 
 def test_absent_auto_with_cuda_detect(monkeypatch) -> None:

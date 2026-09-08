@@ -146,6 +146,11 @@ def test_toolkit_hint_binary_on_disk(monkeypatch) -> None:
 # --- dmidecode_inventory -----------------------------------------------------
 
 
+def test_effective_root_is_false_without_posix_geteuid(monkeypatch) -> None:
+    monkeypatch.delattr(si.os, "geteuid", raising=False)
+    assert si._is_effective_root() is False
+
+
 def test_dmidecode_not_linux(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Darwin")
     out = si.dmidecode_inventory()
@@ -155,7 +160,7 @@ def test_dmidecode_not_linux(monkeypatch) -> None:
 def test_dmidecode_requires_root(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Linux")
     monkeypatch.setattr(si.shutil, "which", which_map({"dmidecode": "/usr/sbin/dmidecode"}))
-    monkeypatch.setattr(si.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(si, "_is_effective_root", lambda: False)
     out = si.dmidecode_inventory()
     assert out["available"] is False
     assert "root" in out["reason"]
@@ -164,7 +169,7 @@ def test_dmidecode_requires_root(monkeypatch) -> None:
 def test_dmidecode_success_as_root(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Linux")
     monkeypatch.setattr(si.shutil, "which", which_map({"dmidecode": "/usr/sbin/dmidecode"}))
-    monkeypatch.setattr(si.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(si, "_is_effective_root", lambda: True)
     monkeypatch.setattr(
         subprocess, "run", run_router({"dmidecode": FakeProc(returncode=0, stdout="ACME\n")})
     )
@@ -176,7 +181,7 @@ def test_dmidecode_success_as_root(monkeypatch) -> None:
 def test_dmidecode_no_data_as_root(monkeypatch) -> None:
     monkeypatch.setattr(si.platform, "system", lambda: "Linux")
     monkeypatch.setattr(si.shutil, "which", which_map({"dmidecode": "/usr/sbin/dmidecode"}))
-    monkeypatch.setattr(si.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(si, "_is_effective_root", lambda: True)
     monkeypatch.setattr(
         subprocess, "run", run_router({"dmidecode": FakeProc(returncode=1, stdout="")})
     )

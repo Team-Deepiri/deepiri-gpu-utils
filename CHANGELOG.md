@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (Unreleased)
+
+- Add immutable canonical GPU primitives with explicit serialization.
+- Add `detect_backend()`, `discover_gpus()`, `select_gpu()`,
+  `check_gpu_health()`, and `resolve_runtime()` while preserving existing APIs.
+- Normalize CUDA and ROCm inventory metrics and represent MPS/CPU states.
+- Keep torch optional and degrade safely for absent or broken installations.
+- Make POSIX shell integration tests and Linux `dmidecode` root checks portable
+  on Windows.
+
 ## 0.1.0 (Unreleased)
 
 - Initial skeleton for `deepiri-gpu-utils`

@@ -46,10 +46,11 @@ def run_text(cmd: Sequence[str], *, timeout: float) -> RunResult:
             list(cmd),
             capture_output=True,
             text=True,
+            errors="replace",
             timeout=timeout,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, UnicodeError, subprocess.TimeoutExpired):
         return RunResult(ok=False, returncode=None, stdout="", stderr="")
 
     return RunResult(

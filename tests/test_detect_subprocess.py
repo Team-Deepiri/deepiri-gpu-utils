@@ -73,6 +73,13 @@ def test_query_nvidia_smi_oserror_is_swallowed(monkeypatch) -> None:
     assert det.query_nvidia_smi() is None
 
 
+def test_query_nvidia_smi_decode_error_is_swallowed(monkeypatch) -> None:
+    monkeypatch.setattr(det.shutil, "which", which_map({"nvidia-smi": "/usr/bin/nvidia-smi"}))
+    decode_error = UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid byte")
+    monkeypatch.setattr(subprocess, "run", run_router({"nvidia-smi": decode_error}))
+    assert det.query_nvidia_smi() is None
+
+
 def test_parse_nvidia_csv_line_handles_blackwell() -> None:
     out = det._parse_nvidia_csv_line("560.0, 16384, NVIDIA GeForce RTX 5090")
     assert out is not None
